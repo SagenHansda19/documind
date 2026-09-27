@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DocuMind — Enterprise RAG Architecture & Reference</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    rel="stylesheet">
+  <style>
+    :root[data-theme="dark"] {
+      --bg-base: #0a0e17;
+      --bg-surface: #111827;
+      --bg-card: rgba(17, 24, 39, 0.7);
+      --bg-card-hover: rgba(31, 41, 55, 0.85);
+      --bg-subtle: #1e293b;
+      --border-color: rgba(255, 255, 255, 0.08);
+      --border-glow: rgba(59, 130, 246, 0.4);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-faint: #64748b;
+      --brand-primary: #3b82f6;
+      --brand-gradient: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #ec4899 100%);
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --accent-cyan: #06b6d4;
+      --code-bg: #030712;
+      --nav-bg: rgba(10, 14, 23, 0.82);
+      --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+      --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+
+    :root[data-theme="light"] {
+      --bg-base: #f8fafc;
+      --bg-surface: #ffffff;
+      --bg-card: rgba(255, 255, 255, 0.85);
+      --bg-card-hover: rgba(241, 245, 249, 0.95);
+      --bg-subtle: #f1f5f9;
+      --border-color: rgba(0, 0, 0, 0.08);
+      --border-glow: rgba(59, 130, 246, 0.25);
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --text-faint: #94a3b8;
+      --brand-primary: #2563eb;
+      --brand-gradient: linear-gradient(135deg, #2563eb 0%, #7c3aed 50%, #db2777 100%);
+      --accent-emerald: #059669;
+      --accent-amber: #d97706;
+      --accent-rose: #e11d48;
+      --accent-cyan: #0891b2;
+      --code-bg: #0f172a;
+      --nav-bg: rgba(248, 250, 252, 0.85);
+      --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+      --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      line-height: 1.6;
+      min-height: 100vh;
+      overflow-x: hidden;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    .ambient-glow {
+      position: fixed;
+      top: -180px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 1000px;
+      height: 480px;
+      background: radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, rgba(139, 92, 246, 0.08) 50%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Navbar */
+    .navbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--nav-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-color);
+      height: 68px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2rem;
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+      color: var(--text-main);
+      font-weight: 700;
+      font-size: 1.25rem;
+    }
+
+    .brand-logo {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: var(--brand-gradient);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
+    }
+
+    .brand-logo svg {
+      width: 20px;
+      height: 20px;
+      fill: #ffffff;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .nav-link {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .nav-link:hover {
+      color: var(--text-main);
+    }
+
+    .theme-toggle-btn {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 0.5rem 0.85rem;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.85rem;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .theme-toggle-btn:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--border-glow);
+    }
+
+    /* Container */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2.5rem 2rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Hero */
+    .hero {
+      text-align: center;
+      padding: 2rem 0 3rem;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 0.9rem;
+      background: rgba(59, 130, 246, 0.12);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: 9999px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--brand-primary);
+      margin-bottom: 1.25rem;
+    }
+
+    .hero h1 {
+      font-size: 2.75rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 1rem;
+      line-height: 1.15;
+    }
+
+    .gradient-text {
+      background: var(--brand-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-subtitle {
+      font-size: 1.15rem;
+      color: var(--text-muted);
+      max-width: 720px;
+      margin: 0 auto 1.8rem;
+    }
+
+    .pills-container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.6rem;
+    }
+
+    .pill {
+      padding: 0.35rem 0.85rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .pill-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+    }
+
+    /* Sections */
+    section {
+      margin-bottom: 4rem;
+    }
+
+    .section-title-wrap {
+      margin-bottom: 1.8rem;
+    }
+
+    .section-tag {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--brand-primary);
+      margin-bottom: 0.3rem;
+    }
+
+    .section-title {
+      font-size: 1.75rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .section-desc {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      margin-top: 0.3rem;
+    }
+
+    /* Cards & Grids */
+    .card {
+      background: var(--bg-card);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 1.6rem;
+      box-shadow: var(--shadow-sm);
+      transition: border-color 0.25s, box-shadow 0.25s;
+    }
+
+    .card:hover {
+      border-color: var(--border-glow);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.5rem;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 860px) {
+
+      .grid-2,
+      .grid-3 {
+        grid-template-columns: 1fr;
+      }
+
+      .navbar {
+        padding: 0 1rem;
+      }
+
+      .hero h1 {
+        font-size: 2rem;
+      }
+    }
+
+    /* Diagram Panel */
+    .diagram-panel {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 1.5rem;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .diagram-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border-color);
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .diagram-tabs {
+      display: flex;
+      gap: 0.4rem;
+      background: var(--bg-subtle);
+      padding: 4px;
+      border-radius: 10px;
+    }
+
+    .diagram-tab-btn {
+      padding: 0.45rem 1rem;
+      border-radius: 8px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .diagram-tab-btn.active {
+      background: var(--brand-primary);
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+    }
+
+    .diagram-svg-container {
+      width: 100%;
+      min-height: 440px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow-x: auto;
+    }
+
+    /* Snippet Containers */
+    .snippet-container {
+      margin-top: 1rem;
+    }
+
+    .snippet-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--brand-primary);
+      margin-bottom: 0.4rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 1.1rem;
+      overflow-x: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.84rem;
+      color: #e2e8f0;
+      position: relative;
+    }
+
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.84rem;
+      line-height: 1.5;
+    }
+
+    .copy-btn {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-color);
+      color: #94a3b8;
+      border-radius: 6px;
+      padding: 0.25rem 0.6rem;
+      font-size: 0.72rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .copy-btn:hover {
+      color: #ffffff;
+      background: var(--brand-primary);
+    }
+
+    /* Callouts */
+    .callout {
+      border-radius: 12px;
+      padding: 1.2rem 1.4rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      gap: 1rem;
+      border: 1px solid;
+    }
+
+    .callout-danger {
+      background: rgba(244, 63, 94, 0.08);
+      border-color: rgba(244, 63, 94, 0.3);
+    }
+
+    .callout-success {
+      background: rgba(16, 185, 129, 0.08);
+      border-color: rgba(16, 185, 129, 0.3);
+    }
+
+    .callout-warning {
+      background: rgba(245, 158, 11, 0.08);
+      border-color: rgba(245, 158, 11, 0.3);
+    }
+
+    .callout-icon {
+      font-size: 1.4rem;
+      flex-shrink: 0;
+    }
+
+    .callout-title {
+      font-weight: 700;
+      font-size: 0.95rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .callout-desc {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+    }
+
+    /* API Endpoint Spec */
+    .endpoint-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .endpoint-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.8rem;
+    }
+
+    .method-badge {
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+    }
+
+    .method-post {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: var(--accent-emerald);
+    }
+
+    .endpoint-path {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .endpoint-meta {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      background: var(--brand-primary);
+      color: #ffffff;
+      padding: 0.7rem 1.2rem;
+      border-radius: 8px;
+      box-shadow: var(--shadow-lg);
+      font-size: 0.88rem;
+      font-weight: 600;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.3s ease;
+      z-index: 1000;
+      pointer-events: none;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="ambient-glow"></div>
+
+  <!-- Navigation -->
+  <nav class="navbar">
+    <a href="#" class="nav-brand">
+      <div class="brand-logo">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+        </svg>
+      </div>
+      <span>DocuMind</span>
+    </a>
+    <div class="nav-links">
+      <a href="#architecture" class="nav-link">Architecture</a>
+      <a href="#troubleshooting" class="nav-link">Troubleshooting</a>
+      <a href="#snippets" class="nav-link">Core Snippets</a>
+      <a href="#api" class="nav-link">API Reference</a>
+      <button class="theme-toggle-btn" id="themeToggle" title="Toggle Theme">
+        <span id="themeIcon">☀️</span>
+        <span id="themeText">Light</span>
+      </button>
+    </div>
+  </nav>
+
+  <main class="container">
+    <!-- Hero Header -->
+    <header class="hero">
+      <div class="hero-badge">Verified RAG Engine v0.0.1</div>
+      <h1>Enterprise Knowledge <span class="gradient-text">Architecture</span></h1>
+      <p class="hero-subtitle">
+        High-throughput Retrieval-Augmented Generation powered by Spring Boot 3.3.0, PostgreSQL pgvector, and Google
+        Gemini.
+      </p>
+      <div class="pills-container">
+        <div class="pill"><span class="pill-dot" style="background:#10b981;"></span> Spring Boot 3.3.0</div>
+        <div class="pill"><span class="pill-dot" style="background:#3b82f6;"></span> LangChain4j 0.35.0</div>
+        <div class="pill"><span class="pill-dot" style="background:#8b5cf6;"></span> pgvector (768-d)</div>
+        <div class="pill"><span class="pill-dot" style="background:#f43f5e;"></span> Gemini 3.8 Flash</div>
+        <div class="pill"><span class="pill-dot" style="background:#06b6d4;"></span> gemini-embedding-001</div>
+      </div>
+    </header>
+
+    <!-- Visual Architecture & Sequence Section -->
+    <section id="architecture">
+      <div class="section-title-wrap">
+        <div class="section-tag">Interactive Diagrams</div>
+        <h2 class="section-title">System Topography & Lifecycle</h2>
+        <p class="section-desc">Toggle between architectural topology and the step-by-step request flow.</p>
+      </div>
+
+      <div class="diagram-panel">
+        <div class="diagram-header">
+          <div class="diagram-tabs">
+            <button class="diagram-tab-btn active" onclick="switchDiagram('arch', this)">System Architecture</button>
+            <button class="diagram-tab-btn" onclick="switchDiagram('seq', this)">Data Flow Sequence</button>
+          </div>
+          <span style="font-size: 0.85rem; color: var(--text-muted);">Scalable Vector Canvas (No External
+            Dependencies)</span>
+        </div>
+
+        <div class="diagram-svg-container">
+          <!-- Architecture SVG -->
+          <svg id="svgArch" viewBox="0 0 960 440" width="100%" height="440" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="appGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.12" />
+                <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0.04" />
+              </linearGradient>
+              <filter id="cardShadow" x="-10%" y="-10%" width="120%" height="120%">
+                <feDropShadow dx="0" dy="4" stdDeviation="6" flood-opacity="0.25" />
+              </filter>
+            </defs>
+
+            <!-- Spring Boot App Boundary -->
+            <rect x="180" y="30" width="480" height="380" rx="16" fill="url(#appGrad)" stroke="#3b82f6"
+              stroke-width="1.5" stroke-dasharray="6 6" />
+            <text x="200" y="58" fill="#3b82f6" font-size="12" font-weight="700" letter-spacing="1">SPRING BOOT 3.3.0
+              CORE APPLICATION BOUNDARY</text>
+
+            <!-- External Client Node -->
+            <g transform="translate(30, 185)">
+              <rect width="120" height="70" rx="12" fill="#1e293b" stroke="#64748b" stroke-width="1.5"
+                filter="url(#cardShadow)" />
+              <text x="60" y="34" fill="#f8fafc" font-size="14" font-weight="700" text-anchor="middle">REST
+                Client</text>
+              <text x="60" y="52" fill="#94a3b8" font-size="11" text-anchor="middle">Browser / API</text>
+            </g>
+
+            <!-- RagController Node -->
+            <g transform="translate(220, 185)">
+              <rect width="160" height="70" rx="12" fill="#1e293b" stroke="#10b981" stroke-width="2"
+                filter="url(#cardShadow)" />
+              <text x="80" y="32" fill="#f8fafc" font-size="14" font-weight="700"
+                text-anchor="middle">RagController</text>
+              <text x="80" y="50" fill="#10b981" font-size="11" text-anchor="middle">/ingest • /ask (:8080)</text>
+            </g>
+
+            <!-- RagService Node -->
+            <g transform="translate(450, 185)">
+              <rect width="180" height="70" rx="12" fill="#1e293b" stroke="#3b82f6" stroke-width="2"
+                filter="url(#cardShadow)" />
+              <text x="90" y="32" fill="#f8fafc" font-size="14" font-weight="700" text-anchor="middle">RagService</text>
+              <text x="90" y="50" fill="#60a5fa" font-size="11" text-anchor="middle">Chunking & RAG Core</text>
+            </g>
+
+            <!-- AiConfig Node -->
+            <g transform="translate(450, 75)">
+              <rect width="180" height="58" rx="12" fill="#1e293b" stroke="#8b5cf6" stroke-width="1.5"
+                stroke-dasharray="4 4" />
+              <text x="90" y="27" fill="#f8fafc" font-size="13" font-weight="700" text-anchor="middle">AiConfig</text>
+              <text x="90" y="43" fill="#a78bfa" font-size="11" text-anchor="middle">resolveApiKey() • Beans</text>
+            </g>
+
+            <!-- PostgreSQL pgvector -->
+            <g transform="translate(730, 185)">
+              <rect width="190" height="70" rx="12" fill="#1e293b" stroke="#06b6d4" stroke-width="2"
+                filter="url(#cardShadow)" />
+              <text x="95" y="32" fill="#f8fafc" font-size="14" font-weight="700" text-anchor="middle">PostgreSQL
+                (pgvector)</text>
+              <text x="95" y="50" fill="#22d3ee" font-size="11" text-anchor="middle">doc_embeddings (dim: 768)</text>
+            </g>
+
+            <!-- Gemini Chat Node -->
+            <g transform="translate(730, 75)">
+              <rect width="190" height="60" rx="12" fill="#1e293b" stroke="#f43f5e" stroke-width="1.5"
+                filter="url(#cardShadow)" />
+              <text x="95" y="29" fill="#f8fafc" font-size="13" font-weight="700" text-anchor="middle">Gemini
+                Chat</text>
+              <text x="95" y="45" fill="#fb7185" font-size="11" text-anchor="middle">gemini-3.8-flash</text>
+            </g>
+
+            <!-- Gemini Embed Node -->
+            <g transform="translate(730, 305)">
+              <rect width="190" height="60" rx="12" fill="#1e293b" stroke="#f59e0b" stroke-width="1.5"
+                filter="url(#cardShadow)" />
+              <text x="95" y="29" fill="#f8fafc" font-size="13" font-weight="700" text-anchor="middle">Gemini
+                Embed</text>
+              <text x="95" y="45" fill="#fcd34d" font-size="11" text-anchor="middle">gemini-embedding-001 (768)</text>
+            </g>
+
+            <!-- Connectors -->
+            <path d="M 150 220 L 220 220" stroke="#10b981" stroke-width="2" />
+            <text x="185" y="210" fill="#10b981" font-size="10" font-weight="600" text-anchor="middle">POST REST</text>
+
+            <path d="M 380 220 L 450 220" stroke="#3b82f6" stroke-width="2" />
+            <path d="M 540 133 L 540 185" stroke="#8b5cf6" stroke-width="1.5" stroke-dasharray="3 3" />
+
+            <path d="M 630 220 L 730 220" stroke="#06b6d4" stroke-width="2" />
+            <text x="680" y="210" fill="#06b6d4" font-size="10" font-weight="600"
+              text-anchor="middle">store/search</text>
+
+            <path d="M 540 185 L 540 105 L 730 105" fill="none" stroke="#f43f5e" stroke-width="1.5" />
+            <text x="675" y="98" fill="#f43f5e" font-size="10" font-weight="600" text-anchor="middle">prompt</text>
+
+            <path d="M 540 255 L 540 335 L 730 335" fill="none" stroke="#f59e0b" stroke-width="1.5" />
+            <text x="675" y="328" fill="#f59e0b" font-size="10" font-weight="600" text-anchor="middle">vectorize</text>
+          </svg>
+
+          <!-- Sequence SVG -->
+          <svg id="svgSeq" viewBox="0 0 960 440" width="100%" height="440" xmlns="http://www.w3.org/2000/svg"
+            style="display: none;">
+            <g font-size="12" font-weight="700" text-anchor="middle">
+              <rect x="40" y="15" width="110" height="34" rx="8" fill="#1e293b" stroke="#64748b" />
+              <text x="95" y="37" fill="#f8fafc">Client</text>
+              <line x1="95" y1="50" x2="95" y2="420" stroke="#334155" stroke-dasharray="4 4" />
+
+              <rect x="200" y="15" width="120" height="34" rx="8" fill="#1e293b" stroke="#10b981" />
+              <text x="260" y="37" fill="#10b981">RagController</text>
+              <line x1="260" y1="50" x2="260" y2="420" stroke="#334155" stroke-dasharray="4 4" />
+
+              <rect x="370" y="15" width="120" height="34" rx="8" fill="#1e293b" stroke="#3b82f6" />
+              <text x="430" y="37" fill="#60a5fa">RagService</text>
+              <line x1="430" y1="50" x2="430" y2="420" stroke="#334155" stroke-dasharray="4 4" />
+
+              <rect x="540" y="15" width="120" height="34" rx="8" fill="#1e293b" stroke="#f59e0b" />
+              <text x="600" y="37" fill="#fcd34d">Gemini Embed</text>
+              <line x1="600" y1="50" x2="600" y2="420" stroke="#334155" stroke-dasharray="4 4" />
+
+              <rect x="700" y="15" width="110" height="34" rx="8" fill="#1e293b" stroke="#06b6d4" />
+              <text x="755" y="37" fill="#22d3ee">pgvector</text>
+              <line x1="755" y1="50" x2="755" y2="420" stroke="#334155" stroke-dasharray="4 4" />
+
+              <rect x="830" y="15" width="110" height="34" rx="8" fill="#1e293b" stroke="#f43f5e" />
+              <text x="885" y="37" fill="#fb7185">Gemini Chat</text>
+              <line x1="885" y1="50" x2="885" y2="420" stroke="#334155" stroke-dasharray="4 4" />
+            </g>
+
+            <!-- Ingestion Phase Box -->
+            <rect x="30" y="70" width="900" height="135" rx="8" fill="rgba(16, 185, 129, 0.04)" stroke="#10b981"
+              stroke-dasharray="4 4" />
+            <text x="45" y="90" fill="#10b981" font-size="11" font-weight="700">1. DOCUMENT INGESTION PHASE</text>
+
+            <line x1="95" y1="110" x2="260" y2="110" stroke="#10b981" stroke-width="2" />
+            <text x="177" y="104" fill="#10b981" font-size="10" text-anchor="middle">POST /api/rag/ingest {text}</text>
+
+            <line x1="260" y1="130" x2="430" y2="130" stroke="#3b82f6" stroke-width="1.5" />
+            <text x="345" y="124" fill="#94a3b8" font-size="10" text-anchor="middle">split & ingestText()</text>
+
+            <line x1="430" y1="150" x2="600" y2="150" stroke="#f59e0b" stroke-width="1.5" />
+            <text x="515" y="144" fill="#fcd34d" font-size="10" text-anchor="middle">embed(segment)</text>
+
+            <line x1="430" y1="180" x2="755" y2="180" stroke="#06b6d4" stroke-width="2" />
+            <text x="592" y="174" fill="#22d3ee" font-size="10" text-anchor="middle">add(embedding, segment)</text>
+
+            <!-- Query Phase Box -->
+            <rect x="30" y="225" width="900" height="185" rx="8" fill="rgba(59, 130, 246, 0.04)" stroke="#3b82f6"
+              stroke-dasharray="4 4" />
+            <text x="45" y="245" fill="#3b82f6" font-size="11" font-weight="700">2. RETRIEVAL & GENERATION PHASE</text>
+
+            <line x1="95" y1="265" x2="260" y2="265" stroke="#3b82f6" stroke-width="2" />
+            <text x="177" y="259" fill="#3b82f6" font-size="10" text-anchor="middle">POST /api/rag/ask {question}</text>
+
+            <line x1="430" y1="295" x2="600" y2="295" stroke="#f59e0b" stroke-width="1.5" />
+            <text x="515" y="289" fill="#fcd34d" font-size="10" text-anchor="middle">embed(question)</text>
+
+            <line x1="430" y1="330" x2="755" y2="330" stroke="#06b6d4" stroke-width="2" />
+            <text x="592" y="324" fill="#22d3ee" font-size="10" text-anchor="middle">search(k=3, minScore=0.6)</text>
+
+            <line x1="430" y1="365" x2="885" y2="365" stroke="#f43f5e" stroke-width="2" />
+            <text x="657" y="359" fill="#fb7185" font-size="10" text-anchor="middle">generate(strictPrompt)</text>
+
+            <line x1="885" y1="395" x2="95" y2="395" stroke="#10b981" stroke-width="2" stroke-dasharray="3 3" />
+            <text x="490" y="390" fill="#10b981" font-size="10" text-anchor="middle">200 OK {"answer": "..."}</text>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- Troubleshooting Guide -->
+    <section id="troubleshooting">
+      <div class="section-title-wrap">
+        <div class="section-tag">Diagnostics & Fixes</div>
+        <h2 class="section-title">Key Bug Fixes & Troubleshooting</h2>
+        <p class="section-desc">Analysis of the HTTP 400 runtime failure and exact resolution details.</p>
+      </div>
+
+      <div class="callout callout-danger">
+        <div class="callout-icon">⚠️</div>
+        <div>
+          <div class="callout-title">The Runtime Failure: HTTP 400 INVALID_ARGUMENT</div>
+          <div class="callout-desc">
+            <code>java.lang.RuntimeException: INVALID_ARGUMENT (code 400) API key not valid. Please pass a valid API key.</code>
+            Thrown inside <code>GoogleAiEmbeddingModel.embed()</code> when executing
+            <code>POST models/{model}:embedContent</code>.
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="font-size: 1.1rem; margin-bottom: 0.6rem; color: var(--accent-rose);">1. The 'AQ.' Prefix
+            Truncation</h3>
+          <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.75rem;">
+            Google AI Studio keys modern format begins with an explicit <code>AQ.</code> prefix. Stripping this prefix
+            invalidates the cryptographic hash check at Google's Envoy API gateway, resulting in an immediate
+            <code>400 INVALID_ARGUMENT</code>.
+          </p>
+          <div
+            style="background: var(--code-bg); padding: 0.75rem; border-radius: 8px; font-family: monospace; font-size: 0.8rem;">
+            <span style="color:#ef4444;">❌ Ab8RN6KbOmfv5oixYryOoOvt... (Truncated)</span><br />
+            <span style="color:#10b981;">✔️ AQ.Ab8RN6KbOmfv5oixYryOoOvt... (Valid)</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 style="font-size: 1.1rem; margin-bottom: 0.6rem; color: var(--accent-amber);">2. Lazy Initialization
+            Illusion</h3>
+          <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.75rem;">
+            Spring Boot starts successfully because <code>GoogleAiGeminiChatModel.builder().build()</code> is entirely
+            lazy—it configures Retrofit without making any network handshake on startup.
+          </p>
+          <p style="color: var(--text-muted); font-size: 0.9rem;">
+            In RAG, <code>askQuestion()</code> embeds the question on line 72 <em>before</em> calling generate. The app
+            failed at embedding before the chat model was ever invoked.
+          </p>
+        </div>
+
+        <div class="card">
+          <h3 style="font-size: 1.1rem; margin-bottom: 0.6rem; color: var(--accent-cyan);">3. Vector Dimension Alignment
+          </h3>
+          <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.75rem;">
+            Google's <code>gemini-embedding-001</code> defaults to 3072 dimensions. Because pgvector in PostgreSQL is
+            initialized with <code>vector(768)</code>, omitting dimension control results in database insertion crashes.
+          </p>
+          <p style="color: var(--text-muted); font-size: 0.9rem;">
+            <strong>Fix:</strong> Explicitly invoke <code>.outputDimensionality(768)</code> on the embedding model
+            builder.
+          </p>
+        </div>
+
+        <div class="card">
+          <h3 style="font-size: 1.1rem; margin-bottom: 0.6rem; color: var(--accent-emerald);">4. Self-Healing Key
+            Resolution</h3>
+          <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.75rem;">
+            Instead of fragile static strings, <code>AiConfig.java</code> implements <code>resolveApiKey()</code>, which
+            trims whitespace, strips quotes, and auto-restores <code>AQ.</code> if accidentally omitted.
+          </p>
+          <p style="color: var(--text-muted); font-size: 0.9rem;">
+            Guarantees immediate zero-downtime tolerance for human configuration mistakes.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Core Snippets Section -->
+    <section id="snippets">
+      <div class="section-title-wrap">
+        <div class="section-tag">Code Reference</div>
+        <h2 class="section-title">Snippet-Focused Implementation</h2>
+        <p class="section-desc">Key architectural logic extracts—concise, focused, and free of boilerplate.</p>
+      </div>
+
+      <div class="grid-2">
+        <!-- Snippet 1: resolveApiKey -->
+        <div class="card">
+          <div class="snippet-label">
+            <span>AiConfig.java • Key Normalization</span>
+            <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+          </div>
+          <pre><code>// Restores 'AQ.' prefix if accidentally truncated
+private String resolveApiKey() {
+    if (apiKey == null || apiKey.isBlank()) {
+        return "";
+    }
+    String key = apiKey.trim().replace("\"", "").replace("'", "");
+    if (!key.startsWith("AQ.") && !key.startsWith("AIza")) {
+        key = "AQ." + key;
+    }
+    return key;
+}</code></pre>
+        </div>
+
+        <!-- Snippet 2: Embedding Model Builder -->
+        <div class="card">
+          <div class="snippet-label">
+            <span>AiConfig.java • 768-D Dimension Lock</span>
+            <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+          </div>
+          <pre><code>@Bean
+public EmbeddingModel embeddingModel() {
+    return GoogleAiEmbeddingModel.builder()
+            .apiKey(resolveApiKey())
+            .modelName(embeddingModelName)
+            .outputDimensionality(768) // Matches pgvector vector(768)
+            .build();
+}</code></pre>
+        </div>
+
+        <!-- Snippet 3: Document Chunking & Embedding -->
+        <div class="card">
+          <div class="snippet-label">
+            <span>RagService.java • Document Ingestion</span>
+            <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+          </div>
+          <pre><code>DocumentSplitter splitter = DocumentSplitters.recursive(300, 50);
+List&lt;TextSegment&gt; segments = splitter.split(Document.from(textContent));
+
+for (TextSegment segment : segments) {
+    Embedding embedding = embeddingModel.embed(segment).content();
+    embeddingStore.add(embedding, segment);
+}</code></pre>
+        </div>
+
+        <!-- Snippet 4: Vector Similarity Search -->
+        <div class="card">
+          <div class="snippet-label">
+            <span>RagService.java • Vector Retrieval</span>
+            <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+          </div>
+          <pre><code>Embedding queryEmbedding = embeddingModel.embed(question).content();
+
+EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+        .queryEmbedding(queryEmbedding)
+        .maxResults(3)
+        .minScore(0.6)
+        .build();
+
+EmbeddingSearchResult&lt;TextSegment&gt; searchResult = 
+        embeddingStore.search(searchRequest);</code></pre>
+        </div>
+
+        <!-- Snippet 5: Strict Prompt Synthesis -->
+        <div class="card">
+          <div class="snippet-label">
+            <span>RagService.java • Grounded Generation</span>
+            <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+          </div>
+          <pre><code>String prompt = String.format(
+    "You are a strict enterprise knowledge assistant. Answer the user's question using ONLY the provided context below.\n" +
+    "If the answer cannot be found in the context, state: 'I cannot find the answer in the provided documents.'\n\n" +
+    "Context:\n%s\n\nQuestion: %s",
+    context, question
+);
+return chatLanguageModel.generate(prompt);</code></pre>
+        </div>
+
+        <!-- Snippet 6: Properties Configuration -->
+        <div class="card">
+          <div class="snippet-label">
+            <span>application.properties • Environment Mappings</span>
+            <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+          </div>
+          <pre><code># Gemini & pgvector Configuration
+gemini.api.key=${GEMINI_API_KEY:YOUR_API_KEY}
+gemini.chat.model=gemini-3.8-flash
+gemini.embedding.model=gemini-embedding-001
+gemini.embedding.dimension=768</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- API Reference -->
+    <section id="api">
+      <div class="section-title-wrap">
+        <div class="section-tag">API Reference</div>
+        <h2 class="section-title">REST Endpoints Specification</h2>
+        <p class="section-desc">Full contract for Document Ingestion and Context-Grounded Querying.</p>
+      </div>
+
+      <!-- Endpoint 1: Ingest -->
+      <div class="endpoint-card">
+        <div class="endpoint-header">
+          <span class="method-badge method-post">POST</span>
+          <span class="endpoint-path">/api/rag/ingest</span>
+        </div>
+        <div class="endpoint-meta">
+          Chunks input document into 300-token segments with 50-token overlap, calculates 768-d embeddings, and inserts
+          them into PostgreSQL.
+        </div>
+
+        <div class="grid-2">
+          <div>
+            <div class="snippet-label">
+              <span>cURL Invocation</span>
+              <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+            </div>
+            <pre><code>curl -X POST http://localhost:8080/api/rag/ingest \
+  -H "Content-Type: application/json" \
+  -d '{"text": "DocuMind is an enterprise knowledge assistant developed using Spring Boot, PostgreSQL with pgvector, and Google Gemini."}'</code></pre>
+          </div>
+          <div>
+            <div class="snippet-label">
+              <span>Response (200 OK)</span>
+              <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+            </div>
+            <pre><code>Successfully ingested 1 text chunks into pgvector!</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- Endpoint 2: Ask -->
+      <div class="endpoint-card">
+        <div class="endpoint-header">
+          <span class="method-badge method-post">POST</span>
+          <span class="endpoint-path">/api/rag/ask</span>
+        </div>
+        <div class="endpoint-meta">
+          Converts query to vector representation, searches pgvector for top-3 relevant segments (score ≥ 0.6), and
+          generates a strictly grounded answer.
+        </div>
+
+        <div class="grid-2">
+          <div>
+            <div class="snippet-label">
+              <span>cURL Invocation</span>
+              <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+            </div>
+            <pre><code>curl -X POST http://localhost:8080/api/rag/ask \
+  -H "Content-Type: application/json" \
+  -d '{"question": "What technologies does DocuMind use?"}'</code></pre>
+          </div>
+          <div>
+            <div class="snippet-label">
+              <span>Response (200 OK)</span>
+              <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+            </div>
+            <pre><code>{
+  "answer": "DocuMind is developed using the following technologies:\n- Spring Boot\n- PostgreSQL with pgvector\n- Google Gemini"
+}</code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast">Copied to clipboard!</div>
+
+  <script>
+    // Theme toggle
+    const themeToggleBtn = document.getElementById('themeToggle');
+    const themeIcon = document.getElementById('themeIcon');
+    const themeText = document.getElementById('themeText');
+    const htmlRoot = document.documentElement;
+
+    function applyTheme(theme) {
+      htmlRoot.setAttribute('data-theme', theme);
+      if (theme === 'dark') {
+        themeIcon.textContent = '☀️';
+        themeText.textContent = 'Light';
+      } else {
+        themeIcon.textContent = '🌙';
+        themeText.textContent = 'Dark';
+      }
+      localStorage.setItem('documind_theme', theme);
+    }
+
+    const savedTheme = localStorage.getItem('documind_theme') || 'dark';
+    applyTheme(savedTheme);
+
+    themeToggleBtn.addEventListener('click', () => {
+      const current = htmlRoot.getAttribute('data-theme');
+      applyTheme(current === 'dark' ? 'light' : 'dark');
+    });
+
+    // Diagram tabs switcher
+    function switchDiagram(type, btn) {
+      document.querySelectorAll('.diagram-tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      const archSvg = document.getElementById('svgArch');
+      const seqSvg = document.getElementById('svgSeq');
+
+      if (type === 'arch') {
+        archSvg.style.display = 'block';
+        seqSvg.style.display = 'none';
+      } else {
+        archSvg.style.display = 'none';
+        seqSvg.style.display = 'block';
+      }
+    }
+
+    // Snippet copy
+    function copySnippet(btn) {
+      const pre = btn.closest('.snippet-label, .card, div').querySelector('pre') || btn.nextElementSibling;
+      const code = pre.querySelector('code') ? pre.querySelector('code').innerText : pre.innerText;
+      navigator.clipboard.writeText(code.trim()).then(() => {
+        showToast("Copied to clipboard!");
+      });
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 2000);
+    }
+  </script>
+</body>
+
+</html>
