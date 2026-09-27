@@ -93,7 +93,15 @@ public class RagController {
     }
 
     /**
-     * 6. Purge all document embeddings from the vector store.
+     * 6. Retrieve list of all uploaded documents currently in vector store.
+     */
+    @GetMapping("/documents")
+    public ResponseEntity<List<Map<String, Object>>> listDocuments() {
+        return ResponseEntity.ok(ragService.listDocuments());
+    }
+
+    /**
+     * 7. Purge all document embeddings from the vector store.
      */
     @DeleteMapping("/documents")
     public ResponseEntity<Map<String, String>> clearAllDocuments() {

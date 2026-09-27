@@ -37,6 +37,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -210,6 +211,33 @@ public class RagService {
         int deleted = jdbcTemplate.update("DELETE FROM doc_embeddings WHERE metadata->>'file_name' = ?", fileName);
         log.info("Deleted {} segments for file '{}'", deleted, fileName);
         return deleted > 0;
+    }
+
+    /**
+     * List all distinct uploaded documents and chunk counts in the vector database.
+     */
+    public List<Map<String, Object>> listDocuments() {
+        String sql = "SELECT metadata->>'file_name' AS fileName, " +
+                     "MAX(metadata->>'file_size') AS fileSize, " +
+                     "COUNT(*) AS chunkCount " +
+                     "FROM doc_embeddings " +
+                     "WHERE metadata->>'file_name' IS NOT NULL " +
+                     "GROUP BY metadata->>'file_name' " +
+                     "ORDER BY fileName ASC";
+        return jdbcTemplate.query(sql, (rs, rowNum) -> {
+            Map<String, Object> doc = new HashMap<>();
+            doc.put("fileName", rs.getString("fileName"));
+            String sizeStr = rs.getString("fileSize");
+            long size = 0L;
+            if (sizeStr != null && !sizeStr.isBlank()) {
+                try {
+                    size = Long.parseLong(sizeStr);
+                } catch (NumberFormatException ignored) {}
+            }
+            doc.put("fileSize", size);
+            doc.put("chunkCount", rs.getInt("chunkCount"));
+            return doc;
+        });
     }
 
     /**

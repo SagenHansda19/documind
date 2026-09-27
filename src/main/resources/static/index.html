@@ -1,1218 +1,540 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DocuMind - Enterprise RAG Knowledge Assistant</title>
-  <meta name="description" content="AI-powered Enterprise RAG Knowledge Assistant with Spring Boot, PostgreSQL pgvector, and Google Gemini">
+  <title>DocuMind — Enterprise Knowledge Assistant</title>
+  <meta name="description" content="Ultra-minimalist, high-performance RAG knowledge assistant powered by Spring Boot, PostgreSQL pgvector, and Dual-Provider LLM Engine.">
+  
+  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            zinc: {
+              850: '#1f1f23',
+              925: '#111114',
+              950: '#09090b',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Marked.js for Markdown Rendering -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+
+  <!-- Highlight.js for Code Highlighting -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark-dimmed.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
   <style>
-    :root {
-      --bg-base: #090d16;
-      --bg-surface: #101626;
-      --bg-surface-elevated: #162036;
-      --bg-glass: rgba(18, 26, 44, 0.72);
-      --bg-glass-card: rgba(22, 32, 54, 0.65);
-      --border-subtle: rgba(255, 255, 255, 0.08);
-      --border-active: rgba(99, 102, 241, 0.4);
-      --border-glow: rgba(56, 189, 248, 0.35);
-      --primary: #6366f1;
-      --primary-glow: rgba(99, 102, 241, 0.25);
-      --primary-hover: #4f46e5;
-      --accent-cyan: #38bdf8;
-      --accent-emerald: #10b981;
-      --accent-rose: #f43f5e;
-      --text-main: #f8fafc;
-      --text-muted: #94a3b8;
-      --text-subtle: #64748b;
-      --code-bg: #0f172a;
-      --radius-sm: 8px;
-      --radius-md: 14px;
-      --radius-lg: 20px;
-      --shadow-card: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
-      --shadow-glow: 0 0 25px rgba(99, 102, 241, 0.2);
-    }
-
-    [data-theme="light"] {
-      --bg-base: #f8fafc;
-      --bg-surface: #ffffff;
-      --bg-surface-elevated: #f1f5f9;
-      --bg-glass: rgba(255, 255, 255, 0.85);
-      --bg-glass-card: rgba(255, 255, 255, 0.9);
-      --border-subtle: rgba(15, 23, 42, 0.08);
-      --border-active: rgba(99, 102, 241, 0.5);
-      --border-glow: rgba(56, 189, 248, 0.4);
-      --primary: #4f46e5;
-      --primary-glow: rgba(99, 102, 241, 0.15);
-      --primary-hover: #4338ca;
-      --accent-cyan: #0284c7;
-      --accent-emerald: #059669;
-      --text-main: #0f172a;
-      --text-muted: #475569;
-      --text-subtle: #94a3b8;
-      --code-bg: #f8fafc;
-      --shadow-card: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
-      --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.1);
-    }
-
+    /* Developer typography & crisp rendering */
     * {
       box-sizing: border-box;
-      margin: 0;
-      padding: 0;
     }
-
+    
     body {
-      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-      background-color: var(--bg-base);
-      color: var(--text-main);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      overflow-x: hidden;
-      transition: background-color 0.25s ease, color 0.25s ease;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
     }
 
-    /* Ambient background gradient glow */
-    body::before {
-      content: "";
-      position: fixed;
-      top: -150px;
-      left: 20%;
-      width: 600px;
-      height: 400px;
-      background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, rgba(56, 189, 248, 0.05) 50%, transparent 70%);
-      pointer-events: none;
-      z-index: 0;
-      filter: blur(40px);
-    }
+    /* Ultra-Thin Minimalist Scrollbar */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
 
-    /* Header Nav */
-    header {
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      background: var(--bg-glass);
-      border-bottom: 1px solid var(--border-subtle);
-      padding: 14px 28px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
+    html:not(.dark) ::-webkit-scrollbar-thumb { background: #e4e4e7; }
+    html:not(.dark) ::-webkit-scrollbar-thumb:hover { background: #d4d4d8; }
 
-    .brand-group {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .brand-logo {
-      width: 40px;
-      height: 40px;
-      border-radius: 12px;
-      background: linear-gradient(135deg, #6366f1, #38bdf8);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-weight: 800;
-      font-size: 1.25rem;
-      box-shadow: 0 4px 15px rgba(99, 102, 241, 0.35);
-    }
-
-    .brand-title {
-      font-size: 1.2rem;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .brand-title span {
-      background: linear-gradient(135deg, var(--text-main), var(--accent-cyan));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    .badge-status {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 0.72rem;
-      font-weight: 600;
-      padding: 4px 10px;
-      border-radius: 999px;
-      background: rgba(16, 185, 129, 0.12);
-      color: var(--accent-emerald);
-      border: 1px solid rgba(16, 185, 129, 0.25);
-    }
-
-    .badge-status .pulse-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background-color: var(--accent-emerald);
-      box-shadow: 0 0 8px var(--accent-emerald);
-      animation: pulse 2s infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.4; transform: scale(0.85); }
-    }
-
-    .header-actions {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .session-badge {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      padding: 6px 12px;
-      border-radius: var(--radius-sm);
-      font-size: 0.78rem;
+    /* Markdown prose styles inside message */
+    .chat-prose p { margin-bottom: 0.85rem; line-height: 1.7; color: inherit; }
+    .chat-prose p:last-child { margin-bottom: 0; }
+    .chat-prose ul { list-style-type: disc; padding-left: 1.25rem; margin-bottom: 0.85rem; }
+    .chat-prose ol { list-style-type: decimal; padding-left: 1.25rem; margin-bottom: 0.85rem; }
+    .chat-prose li { margin-bottom: 0.3rem; }
+    .chat-prose h1, .chat-prose h2, .chat-prose h3, .chat-prose h4 { font-weight: 600; margin-top: 1.25rem; margin-bottom: 0.5rem; color: #f4f4f5; }
+    html:not(.dark) .chat-prose h1, html:not(.dark) .chat-prose h2, html:not(.dark) .chat-prose h3, html:not(.dark) .chat-prose h4 { color: #18181b; }
+    .chat-prose h1 { font-size: 1.2rem; }
+    .chat-prose h2 { font-size: 1.05rem; }
+    .chat-prose h3 { font-size: 0.95rem; }
+    .chat-prose blockquote { border-left: 2px solid #52525b; padding-left: 0.85rem; color: #a1a1aa; font-style: italic; margin-bottom: 0.85rem; }
+    .chat-prose table { width: 100%; border-collapse: collapse; margin-bottom: 0.85rem; font-size: 0.82rem; }
+    .chat-prose th, .chat-prose td { border: 1px solid #27272a; padding: 0.45rem 0.65rem; text-align: left; }
+    html:not(.dark) .chat-prose th, html:not(.dark) .chat-prose td { border-color: #e4e4e7; }
+    .chat-prose th { background: rgba(255, 255, 255, 0.02); font-weight: 600; color: #e4e4e7; }
+    html:not(.dark) .chat-prose th { background: rgba(0, 0, 0, 0.02); color: #27272a; }
+    
+    .chat-prose code:not(pre code) {
+      background: rgba(255, 255, 255, 0.06);
+      padding: 0.15rem 0.35rem;
+      border-radius: 0.25rem;
       font-family: 'JetBrains Mono', monospace;
-      color: var(--text-muted);
+      font-size: 0.82em;
+      color: #e4e4e7;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    html:not(.dark) .chat-prose code:not(pre code) {
+      background: #f4f4f5;
+      color: #18181b;
+      border-color: #e4e4e7;
     }
 
-    .btn-icon {
-      background: transparent;
-      border: 1px solid var(--border-subtle);
-      color: var(--text-muted);
-      width: 36px;
-      height: 36px;
-      border-radius: var(--radius-sm);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .btn-icon:hover {
-      background: var(--bg-surface-elevated);
-      color: var(--text-main);
-      border-color: var(--border-active);
-    }
-
-    /* Main Grid Layout */
-    .app-container {
-      display: grid;
-      grid-template-columns: 360px 1fr;
-      flex: 1;
-      height: calc(100vh - 69px);
-      max-width: 1600px;
-      margin: 0 auto;
-      width: 100%;
-      position: relative;
-      z-index: 1;
-    }
-
-    /* Sidebar - Documents & Ingestion */
-    aside.sidebar {
-      background: var(--bg-glass);
-      border-right: 1px solid var(--border-subtle);
-      padding: 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-      overflow-y: auto;
-    }
-
-    .section-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 6px;
-    }
-
-    .section-title {
-      font-size: 0.85rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--text-subtle);
-    }
-
-    /* Drag & Drop Zone */
-    .drop-zone {
-      border: 2px dashed var(--border-subtle);
-      border-radius: var(--radius-md);
-      padding: 24px 16px;
-      text-align: center;
-      background: var(--bg-glass-card);
-      cursor: pointer;
-      transition: all 0.25s ease;
-      position: relative;
-    }
-
-    .drop-zone:hover, .drop-zone.dragover {
-      border-color: var(--primary);
-      background: var(--primary-glow);
-      transform: translateY(-2px);
-    }
-
-    .drop-zone input[type="file"] {
-      position: absolute;
-      top: 0; left: 0; width: 100%; height: 100%;
-      opacity: 0;
-      cursor: pointer;
-    }
-
-    .upload-icon {
-      width: 48px;
-      height: 48px;
-      margin: 0 auto 12px;
-      background: var(--bg-surface);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border: 1px solid var(--border-subtle);
-      color: var(--accent-cyan);
-    }
-
-    .drop-zone h4 {
-      font-size: 0.95rem;
-      font-weight: 600;
-      margin-bottom: 4px;
-    }
-
-    .drop-zone p {
-      font-size: 0.78rem;
-      color: var(--text-muted);
-    }
-
-    .format-pills {
-      display: flex;
-      justify-content: center;
-      gap: 6px;
-      margin-top: 12px;
-    }
-
-    .pill {
-      font-size: 0.68rem;
-      font-weight: 600;
-      padding: 2px 8px;
-      border-radius: 4px;
-      background: var(--bg-surface);
-      color: var(--text-muted);
-      border: 1px solid var(--border-subtle);
-      text-transform: uppercase;
-    }
-
-    /* Text Ingest Card */
-    .ingest-card {
-      background: var(--bg-glass-card);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-md);
-      padding: 16px;
-    }
-
-    .textarea-ingest {
-      width: 100%;
-      height: 80px;
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-sm);
-      color: var(--text-main);
-      padding: 10px;
-      font-family: inherit;
-      font-size: 0.8rem;
-      resize: vertical;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-
-    .textarea-ingest:focus {
-      border-color: var(--primary);
-    }
-
-    .btn-secondary {
-      width: 100%;
-      margin-top: 10px;
-      padding: 8px 12px;
-      font-size: 0.82rem;
-      font-weight: 600;
-      background: var(--bg-surface-elevated);
-      color: var(--text-main);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-sm);
-      cursor: pointer;
-      transition: all 0.2s ease;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-    }
-
-    .btn-secondary:hover {
-      background: var(--border-subtle);
-      border-color: var(--border-active);
-    }
-
-    /* System Stats Card */
-    .stats-card {
-      margin-top: auto;
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-md);
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    .stat-row {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.78rem;
-    }
-
-    .stat-label {
-      color: var(--text-subtle);
-    }
-
-    .stat-val {
-      font-family: 'JetBrains Mono', monospace;
-      color: var(--accent-cyan);
-      font-weight: 600;
-    }
-
-    /* Chat Area */
-    main.chat-area {
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-      background: transparent;
-      position: relative;
-    }
-
-    .chat-messages {
-      flex: 1;
-      overflow-y: auto;
-      padding: 28px 40px;
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
-      scroll-behavior: smooth;
-    }
-
-    /* Empty state */
-    .empty-state {
-      margin: auto;
-      max-width: 580px;
-      text-align: center;
-      padding: 40px 20px;
-    }
-
-    .empty-icon {
-      width: 64px;
-      height: 64px;
-      margin: 0 auto 20px;
-      border-radius: 20px;
-      background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(56, 189, 248, 0.15));
-      border: 1px solid var(--border-active);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--accent-cyan);
-      box-shadow: var(--shadow-glow);
-    }
-
-    .empty-state h2 {
-      font-size: 1.4rem;
-      font-weight: 700;
-      margin-bottom: 8px;
-    }
-
-    .empty-state p {
-      color: var(--text-muted);
-      font-size: 0.9rem;
-      line-height: 1.5;
-      margin-bottom: 24px;
-    }
-
-    .prompt-suggestions {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      text-align: left;
-    }
-
-    .prompt-pill {
-      background: var(--bg-glass-card);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-sm);
-      padding: 12px 14px;
-      font-size: 0.82rem;
-      color: var(--text-main);
-      cursor: pointer;
-      transition: all 0.2s ease;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .prompt-pill:hover {
-      background: var(--primary-glow);
-      border-color: var(--primary);
-      transform: translateY(-2px);
-    }
-
-    /* Message Bubbles */
-    .message-row {
-      display: flex;
-      gap: 14px;
-      max-width: 85%;
-      animation: fadeIn 0.3s ease;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(8px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .message-row.user {
-      align-self: flex-end;
-      flex-direction: row-reverse;
-    }
-
-    .message-row.assistant {
-      align-self: flex-start;
-    }
-
-    .avatar {
-      width: 36px;
-      height: 36px;
-      border-radius: 10px;
-      flex-shrink: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.85rem;
-      font-weight: 700;
-    }
-
-    .avatar.user-avatar {
-      background: linear-gradient(135deg, #6366f1, #8b5cf6);
-      color: white;
-    }
-
-    .avatar.bot-avatar {
-      background: linear-gradient(135deg, #0ea5e9, #6366f1);
-      color: white;
-      box-shadow: 0 0 15px rgba(56, 189, 248, 0.3);
-    }
-
-    .bubble-container {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .bubble {
-      padding: 14px 18px;
-      border-radius: var(--radius-md);
-      font-size: 0.92rem;
-      line-height: 1.6;
-      word-break: break-word;
-      position: relative;
-    }
-
-    .message-row.user .bubble {
-      background: linear-gradient(135deg, #4f46e5, #4338ca);
-      color: white;
-      border-bottom-right-radius: 4px;
-      box-shadow: 0 4px 15px rgba(79, 70, 229, 0.25);
-    }
-
-    .message-row.assistant .bubble {
-      background: var(--bg-glass-card);
-      border: 1px solid var(--border-subtle);
-      border-bottom-left-radius: 4px;
-      color: var(--text-main);
-      box-shadow: var(--shadow-card);
-    }
-
-    .bubble pre {
-      background: var(--code-bg);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-sm);
-      padding: 12px;
-      margin: 10px 0;
+    .chat-prose pre {
+      background: #09090b;
+      border: 1px solid #27272a;
+      border-radius: 0.5rem;
+      padding: 0.85rem 1rem;
       overflow-x: auto;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.82rem;
+      margin: 0.85rem 0;
     }
-
-    .bubble code {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.85em;
-      padding: 2px 5px;
-      border-radius: 4px;
-      background: rgba(255, 255, 255, 0.08);
+    html:not(.dark) .chat-prose pre {
+      background: #fcfcfc;
+      border-color: #e4e4e7;
     }
-
-    .bubble pre code {
-      padding: 0;
-      background: transparent;
-    }
-
-    .bubble ul, .bubble ol {
-      margin-left: 20px;
-      margin-top: 6px;
-      margin-bottom: 6px;
-    }
-
-    .bubble p + p {
-      margin-top: 8px;
-    }
-
-    /* Sources Section */
-    .sources-accordion {
-      margin-top: 10px;
-      border-top: 1px solid var(--border-subtle);
-      padding-top: 8px;
-    }
-
-    .sources-toggle {
-      font-size: 0.76rem;
-      font-weight: 600;
-      color: var(--accent-cyan);
-      background: transparent;
-      border: none;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .sources-list {
-      margin-top: 8px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .source-item {
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-sm);
-      padding: 8px 12px;
-      font-size: 0.76rem;
-    }
-
-    .source-header {
-      display: flex;
-      justify-content: space-between;
-      color: var(--text-muted);
-      margin-bottom: 4px;
-    }
-
-    .source-title {
-      font-weight: 600;
-      color: var(--text-main);
-    }
-
-    .source-score {
-      font-family: 'JetBrains Mono', monospace;
-      color: var(--accent-emerald);
-    }
-
-    .source-snippet {
-      color: var(--text-muted);
-      font-size: 0.74rem;
-      line-height: 1.4;
-      max-height: 60px;
-      overflow-y: auto;
-    }
-
-    /* Typing indicator */
-    .typing-indicator {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      padding: 8px 12px;
-    }
-
-    .typing-dot {
-      width: 7px;
-      height: 7px;
-      background: var(--accent-cyan);
-      border-radius: 50%;
-      animation: bounce 1.4s infinite ease-in-out;
-    }
-
-    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
-    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
-
-    @keyframes bounce {
-      0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
-      40% { transform: translateY(-6px); opacity: 1; }
-    }
-
-    /* Bottom Input Bar */
-    .chat-input-bar {
-      padding: 20px 40px;
-      background: var(--bg-glass);
-      border-top: 1px solid var(--border-subtle);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-    }
-
-    .input-wrapper {
-      max-width: 900px;
-      margin: 0 auto;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .input-box-container {
-      display: flex;
-      align-items: flex-end;
-      gap: 10px;
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-md);
-      padding: 8px 14px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-      transition: border-color 0.2s ease, box-shadow 0.2s ease;
-    }
-
-    .input-box-container:focus-within {
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px var(--primary-glow);
-    }
-
-    .chat-textarea {
-      flex: 1;
-      background: transparent;
-      border: none;
-      color: var(--text-main);
-      font-family: inherit;
-      font-size: 0.95rem;
-      line-height: 1.5;
-      resize: none;
-      max-height: 160px;
-      min-height: 38px;
-      outline: none;
-      padding: 6px 0;
-    }
-
-    .chat-textarea::placeholder {
-      color: var(--text-subtle);
-    }
-
-    .btn-send {
-      background: linear-gradient(135deg, var(--primary), var(--primary-hover));
-      color: white;
-      border: none;
-      width: 40px;
-      height: 40px;
-      border-radius: 10px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      flex-shrink: 0;
-      box-shadow: 0 2px 10px rgba(99, 102, 241, 0.3);
-    }
-
-    .btn-send:hover:not(:disabled) {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 15px rgba(99, 102, 241, 0.45);
-    }
-
-    .btn-send:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-      transform: none;
-    }
-
-    .input-hints {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.72rem;
-      color: var(--text-subtle);
-      padding: 0 4px;
-    }
-
-    /* Toasts */
-    .toast-container {
-      position: fixed;
-      bottom: 24px;
-      right: 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      z-index: 1000;
-      pointer-events: none;
-    }
-
-    .toast {
-      pointer-events: auto;
-      background: var(--bg-surface-elevated);
-      border: 1px solid var(--border-subtle);
-      padding: 12px 18px;
-      border-radius: var(--radius-sm);
-      font-size: 0.85rem;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      box-shadow: var(--shadow-card);
-      animation: slideIn 0.25s ease;
-    }
-
-    .toast.success {
-      border-left: 4px solid var(--accent-emerald);
-    }
-
-    .toast.error {
-      border-left: 4px solid var(--accent-rose);
-    }
-
-    @keyframes slideIn {
-      from { transform: translateX(100%); opacity: 0; }
-      to { transform: translateX(0); opacity: 1; }
-    }
-
-    /* Responsive */
-    @media (max-width: 900px) {
-      .app-container {
-        grid-template-columns: 1fr;
-        height: auto;
-      }
-      aside.sidebar {
-        border-right: none;
-        border-bottom: 1px solid var(--border-subtle);
-      }
-      .chat-messages {
-        padding: 20px;
-      }
-      .chat-input-bar {
-        padding: 16px 20px;
-      }
-    }
+    .chat-prose pre code { background: transparent; padding: 0; font-size: 0.78rem; font-family: 'JetBrains Mono', monospace; border: none; }
   </style>
 </head>
-<body>
 
-  <!-- Top Header Navigation -->
-  <header>
-    <div class="brand-group">
-      <div class="brand-logo">D</div>
-      <div>
-        <div class="brand-title">
-          <span>DocuMind</span>
-          <span class="badge-status">
-            <span class="pulse-dot"></span>
-            Online
-          </span>
+<body class="bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 min-h-screen flex flex-col font-sans transition-colors duration-150 antialiased selection:bg-zinc-800 selection:text-zinc-100">
+
+  <!-- Top Navigation Header (Linear-style clean border and translucent backdrop) -->
+  <header class="h-14 border-b border-zinc-200 dark:border-zinc-800/80 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md sticky top-0 z-40 flex items-center justify-between px-4 sm:px-6">
+    <div class="flex items-center gap-3">
+      <!-- Sidebar Toggle -->
+      <button id="sidebarToggle" class="p-1.5 rounded-md text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 border border-transparent hover:border-zinc-200 dark:hover:border-zinc-800 transition-colors" title="Toggle Sidebar">
+        <i data-lucide="panel-left" class="w-4 h-4"></i>
+      </button>
+
+      <!-- App Logo & Title -->
+      <div class="flex items-center gap-2.5">
+        <div class="w-6 h-6 rounded-md bg-zinc-900 dark:bg-zinc-800 border border-zinc-700/60 dark:border-zinc-700/80 flex items-center justify-center text-zinc-200 shadow-sm">
+          <i data-lucide="terminal" class="w-3.5 h-3.5"></i>
         </div>
+        <span class="font-semibold text-xs tracking-tight text-zinc-900 dark:text-zinc-100">DocuMind</span>
+        <span class="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-mono text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+          <span class="w-1.5 h-1.5 rounded-full bg-zinc-400 dark:bg-zinc-400"></span>
+          pgvector · 768-d
+        </span>
       </div>
     </div>
 
-    <div class="header-actions">
-      <div class="session-badge" title="Active conversation session ID">
-        <span>Session:</span>
-        <span id="sessionDisplay">...</span>
-      </div>
-      <button class="btn-icon" id="btnResetSession" title="New Session / Reset Memory">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+    <!-- Active Session Center Pill -->
+    <div class="hidden md:flex items-center gap-2 px-2.5 py-1 rounded-md bg-zinc-100/80 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 text-[11px] text-zinc-600 dark:text-zinc-400 font-mono">
+      <span>Session:</span>
+      <span id="headerSessionId" class="text-zinc-900 dark:text-zinc-200 font-medium">default-session</span>
+      <button id="headerSessionCopy" class="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors ml-0.5" title="Copy Session ID">
+        <i data-lucide="copy" class="w-3 h-3"></i>
       </button>
-      <button class="btn-icon" id="btnThemeToggle" title="Toggle Dark/Light Mode">
-        <svg id="themeIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+    </div>
+
+    <!-- Right Header Actions -->
+    <div class="flex items-center gap-2">
+      <!-- New Thread Button -->
+      <button id="newChatBtn" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-zinc-700 dark:text-zinc-200 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-900 dark:hover:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 transition-colors">
+        <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+        <span class="hidden sm:inline">New Thread</span>
+      </button>
+
+      <!-- Dark/Light Theme Toggle -->
+      <button id="themeToggle" class="p-1.5 rounded-md text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-900 border border-transparent hover:border-zinc-200 dark:hover:border-zinc-800 transition-colors" title="Toggle Theme">
+        <i data-lucide="sun" id="themeSun" class="w-4 h-4 hidden"></i>
+        <i data-lucide="moon" id="themeMoon" class="w-4 h-4"></i>
       </button>
     </div>
   </header>
 
-  <!-- Main Application Body -->
-  <div class="app-container">
+  <!-- Main Container: Sidebar + Chat Area -->
+  <div class="flex-1 flex overflow-hidden relative">
 
-    <!-- Left Sidebar: Documents & Ingestion -->
-    <aside class="sidebar">
-      <div>
-        <div class="section-header">
-          <span class="section-title">Knowledge Ingestion</span>
+    <!-- Left Sidebar: Documents & Sessions (Monochromatic Charcoal) -->
+    <aside id="sidebar" class="w-72 sm:w-80 md:w-84 border-r border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/70 dark:bg-zinc-925 flex flex-col shrink-0 transition-all duration-200 z-30">
+      
+      <!-- Session Management Card -->
+      <div class="p-4 sm:p-5 border-b border-zinc-200 dark:border-zinc-800/80">
+        <div class="flex items-center justify-between mb-2.5">
+          <span class="text-[11px] font-medium tracking-wider uppercase text-zinc-400 dark:text-zinc-500">Active Session</span>
+          <button id="clearChatMemoryBtn" class="text-[11px] text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 flex items-center gap-1 transition-colors" title="Flush memory window for this session">
+            <i data-lucide="rotate-ccw" class="w-3 h-3"></i>
+            Reset Memory
+          </button>
         </div>
-        
-        <!-- File Drag & Drop Zone -->
-        <div class="drop-zone" id="dropZone">
-          <input type="file" id="fileInput" accept=".pdf,.txt,.md,.json,.csv">
-          <div class="upload-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          </div>
-          <h4>Drop Document Here</h4>
-          <p>or click to browse files</p>
-          <div class="format-pills">
-            <span class="pill">PDF</span>
-            <span class="pill">TXT</span>
-            <span class="pill">MD</span>
-          </div>
+        <div class="flex items-center gap-1.5">
+          <input id="sessionIdInput" type="text" class="w-full text-xs font-mono bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-zinc-800 dark:text-zinc-200 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-600 transition-colors" placeholder="Session identifier...">
+          <button id="setSessionBtn" class="px-3 py-2 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 rounded-lg text-xs font-medium text-zinc-700 dark:text-zinc-300 transition-colors shrink-0">
+            Set
+          </button>
         </div>
-        <div id="uploadStatus" style="margin-top: 10px; font-size: 0.78rem;"></div>
       </div>
 
-      <!-- Raw Text Ingestion Card -->
-      <div class="ingest-card">
-        <div class="section-header">
-          <span class="section-title">Quick Text Ingestion</span>
+      <!-- File Upload Dropzone (Tactile, minimal border, breathing room) -->
+      <div class="p-4 sm:p-5 border-b border-zinc-200 dark:border-zinc-800/80">
+        <div class="flex items-center justify-between mb-2.5">
+          <span class="text-[11px] font-medium tracking-wider uppercase text-zinc-400 dark:text-zinc-500">Knowledge Ingestion</span>
+          <span class="text-[10px] font-mono text-zinc-400 dark:text-zinc-500">PDF · TXT · MD</span>
         </div>
-        <textarea id="rawTextInput" class="textarea-ingest" placeholder="Paste notes, policy text, or snippets directly into vector storage..."></textarea>
-        <button id="btnIngestText" class="btn-secondary">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-          Ingest into pgvector
-        </button>
+
+        <div id="dropzone" class="border border-dashed border-zinc-300 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 rounded-xl p-4 text-center cursor-pointer transition-all bg-white/40 dark:bg-zinc-900/40 hover:bg-white dark:hover:bg-zinc-900/70 flex flex-col items-center justify-center gap-1.5 group">
+          <input type="file" id="fileInput" class="hidden" accept=".pdf,.txt,.md,.markdown,.csv,.json">
+          <div class="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200/60 dark:border-zinc-700/60 flex items-center justify-center text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors shadow-xs">
+            <i data-lucide="upload-cloud" class="w-4 h-4"></i>
+          </div>
+          <p class="text-xs font-medium text-zinc-700 dark:text-zinc-300">Drop document or click to browse</p>
+          <p class="text-[11px] text-zinc-400 dark:text-zinc-500">Recursive chunking (800c/150o)</p>
+        </div>
+
+        <!-- Upload Status Indicator -->
+        <div id="uploadStatus" class="mt-3 hidden">
+          <div class="flex items-center justify-between text-xs mb-1.5">
+            <span id="uploadFileName" class="truncate max-w-[170px] font-mono text-zinc-600 dark:text-zinc-400 text-[11px]">document.pdf</span>
+            <span id="uploadPercent" class="text-zinc-400 dark:text-zinc-400 font-mono text-[11px]">Indexing...</span>
+          </div>
+          <div class="w-full bg-zinc-200 dark:bg-zinc-800 h-1.5 rounded-full overflow-hidden">
+            <div id="uploadProgressBar" class="bg-zinc-500 dark:bg-zinc-300 h-full w-2/3 transition-all duration-300"></div>
+          </div>
+        </div>
       </div>
 
-      <!-- System Stats Card -->
-      <div class="stats-card">
-        <div class="section-header">
-          <span class="section-title">Architecture Specs</span>
+      <!-- Document Inventory Drawer -->
+      <div class="flex-1 flex flex-col min-h-0 p-4 sm:p-5 overflow-hidden">
+        <div class="flex items-center justify-between mb-3 shrink-0">
+          <div class="flex items-center gap-1.5">
+            <span class="text-[11px] font-medium tracking-wider uppercase text-zinc-400 dark:text-zinc-500">Document Store</span>
+            <span id="docCountBadge" class="px-1.5 py-0.5 rounded text-[10px] font-mono text-zinc-600 dark:text-zinc-400 bg-zinc-200/70 dark:bg-zinc-800 border border-zinc-300/50 dark:border-zinc-700/50">0</span>
+          </div>
+          <button id="refreshDocsBtn" class="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors p-1" title="Refresh document inventory">
+            <i data-lucide="refresh-cw" class="w-3 h-3"></i>
+          </button>
         </div>
-        <div class="stat-row">
-          <span class="stat-label">LLM Engine</span>
-          <span class="stat-val" style="color: #f59e0b;">Groq LPU (Gemini Failover)</span>
+
+        <!-- Scrollable Document List -->
+        <div id="documentList" class="flex-1 overflow-y-auto space-y-2 pr-0.5">
+          <!-- Populated by JS -->
+          <div class="text-center py-8 text-xs text-zinc-400 dark:text-zinc-500">
+            No documents indexed.<br>Drop a PDF or Markdown file to begin.
+          </div>
         </div>
-        <div class="stat-row">
-          <span class="stat-label">Embeddings</span>
-          <span class="stat-val">Gemini 768-d</span>
+      </div>
+
+      <!-- Telemetry Footer -->
+      <div class="px-4 sm:px-5 py-3.5 border-t border-zinc-200 dark:border-zinc-800/80 bg-zinc-100/50 dark:bg-zinc-950/60 text-[11px] text-zinc-500 dark:text-zinc-400 flex items-center justify-between shrink-0 font-mono">
+        <div class="flex items-center gap-1.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-zinc-400"></span>
+          <span>Groq LPU + Gemini 3.8</span>
         </div>
-        <div class="stat-row">
-          <span class="stat-label">Vector Store</span>
-          <span class="stat-val">PostgreSQL pgvector</span>
-        </div>
-        <div class="stat-row">
-          <span class="stat-label">Orchestrator</span>
-          <span class="stat-val">LangChain4j 0.35.0</span>
-        </div>
-        <button id="btnClearDocs" class="btn-secondary" style="margin-top: 14px; width: 100%; color: #f43f5e; border-color: rgba(244,63,94,0.3); font-size: 0.78rem;">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-          Purge Vector Store
+        <button id="clearAllDocsBtn" class="text-zinc-400 hover:text-rose-500 dark:hover:text-rose-400 transition-colors" title="Truncate doc_embeddings table">
+          Purge
         </button>
       </div>
     </aside>
 
     <!-- Main Chat Workspace -->
-    <main class="chat-area">
-      <div class="chat-messages" id="chatMessages">
+    <main class="flex-1 flex flex-col min-w-0 bg-white dark:bg-zinc-950 relative">
+      
+      <!-- Messages Stream (Clean breathing room, max-w-3xl column alignment) -->
+      <div id="chatMessages" class="flex-1 overflow-y-auto px-4 sm:px-8 py-8 space-y-6">
         
-        <!-- Empty State Welcome -->
-        <div class="empty-state" id="emptyState">
-          <div class="empty-icon">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 0 1 10 10c0 5.523-4.477 10-10 10a9.96 9.96 0 0 1-4.887-1.272L2 22l1.272-5.113A9.96 9.96 0 0 1 2 12C2 6.477 6.477 2 12 2z"/></svg>
+        <!-- Welcome Screen (Shown when no messages) -->
+        <div id="welcomeState" class="max-w-xl mx-auto my-auto text-center py-12 px-4">
+          <div class="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 flex items-center justify-center mx-auto mb-4 shadow-xs">
+            <i data-lucide="command" class="w-5 h-5"></i>
           </div>
-          <h2>Welcome to DocuMind</h2>
-          <p>Upload a PDF or text document on the left, then ask questions. DocuMind retains conversational context across multi-turn sessions.</p>
+          <h2 class="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 mb-2">DocuMind Knowledge Engine</h2>
+          <p class="text-xs text-zinc-500 dark:text-zinc-400 max-w-sm mx-auto mb-8 leading-relaxed">
+            Institutional RAG assistant with in-database vector search, multi-turn conversational memory, and verified source citations.
+          </p>
 
-          <div class="prompt-suggestions">
-            <div class="prompt-pill" onclick="sendSuggested('What are the main topics discussed in the uploaded documents?')">
-              <span>📄</span> Summarize uploaded documents
-            </div>
-            <div class="prompt-pill" onclick="sendSuggested('What are the security and compliance requirements?')">
-              <span>🔒</span> Security guidelines & compliance
-            </div>
-            <div class="prompt-pill" onclick="sendSuggested('What is the core technical architecture and stack?')">
-              <span>⚡</span> Explain technical architecture
-            </div>
-            <div class="prompt-pill" onclick="sendSuggested('What are the key numerical metrics or SLA thresholds?')">
-              <span>📊</span> Extract SLA metrics & thresholds
-            </div>
-          </div>
-        </div>
+          <!-- Prompt Starters (Minimalist Cards) -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-w-lg mx-auto text-left">
+            <button class="p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/60 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-900 text-xs transition-colors flex flex-col gap-1 shadow-2xs group" onclick="useStarter('Summarize the primary conclusions in the uploaded documentation.')">
+              <span class="font-medium text-zinc-800 dark:text-zinc-200 flex items-center gap-1.5">
+                <i data-lucide="file-text" class="w-3.5 h-3.5 text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-300 transition-colors"></i>
+                Summarize Document
+              </span>
+              <span class="text-zinc-500 dark:text-zinc-500 text-[11px] leading-normal">Extract the key findings, conclusions, and takeaways.</span>
+            </button>
 
-      </div>
+            <button class="p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/60 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-900 text-xs transition-colors flex flex-col gap-1 shadow-2xs group" onclick="useStarter('Identify all technologies, systems, and architectural patterns described.')">
+              <span class="font-medium text-zinc-800 dark:text-zinc-200 flex items-center gap-1.5">
+                <i data-lucide="layers" class="w-3.5 h-3.5 text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-300 transition-colors"></i>
+                Extract Architecture
+              </span>
+              <span class="text-zinc-500 dark:text-zinc-500 text-[11px] leading-normal">Identify components, APIs, dependencies, and protocols.</span>
+            </button>
 
-      <!-- Bottom Chat Input Bar -->
-      <div class="chat-input-bar">
-        <div class="input-wrapper">
-          <div class="input-box-container">
-            <textarea 
-              id="userInput" 
-              class="chat-textarea" 
-              placeholder="Ask anything about your uploaded documents..."
-              rows="1"
-            ></textarea>
-            <button id="btnSend" class="btn-send" title="Send message (Enter)">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            <button class="p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/60 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-900 text-xs transition-colors flex flex-col gap-1 shadow-2xs group" onclick="useStarter('What security, compliance, and credential guidelines are specified?')">
+              <span class="font-medium text-zinc-800 dark:text-zinc-200 flex items-center gap-1.5">
+                <i data-lucide="shield" class="w-3.5 h-3.5 text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-300 transition-colors"></i>
+                Security & Policies
+              </span>
+              <span class="text-zinc-500 dark:text-zinc-500 text-[11px] leading-normal">Audit authentication, authorization, and secret handling.</span>
+            </button>
+
+            <button class="p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/60 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-900 text-xs transition-colors flex flex-col gap-1 shadow-2xs group" onclick="useStarter('What specific questions is this document best suited to answer?')">
+              <span class="font-medium text-zinc-800 dark:text-zinc-200 flex items-center gap-1.5">
+                <i data-lucide="help-circle" class="w-3.5 h-3.5 text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-300 transition-colors"></i>
+                Document Capabilities
+              </span>
+              <span class="text-zinc-500 dark:text-zinc-500 text-[11px] leading-normal">Explore the knowledge domain and boundaries.</span>
             </button>
           </div>
-          <div class="input-hints">
-            <span>Press <strong>Enter</strong> to send, <strong>Shift + Enter</strong> for a new line</span>
-            <span id="charCount">0 characters</span>
+        </div>
+
+      </div>
+
+      <!-- Bottom Chat Input Bar (Compact, sleek, well-proportioned) -->
+      <div class="border-t border-zinc-200/80 dark:border-zinc-800/80 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md px-4 sm:px-6 py-3 shrink-0">
+        <div class="max-w-3xl mx-auto">
+          <form id="chatForm" class="relative rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-900/80 focus-within:border-zinc-400 dark:focus-within:border-zinc-600 focus-within:bg-white dark:focus-within:bg-zinc-900 transition-all flex items-end p-1.5 gap-1.5 shadow-2xs">
+            
+            <!-- File Attach Trigger -->
+            <button type="button" id="docDrawerTrigger" class="h-8 w-8 text-zinc-400 hover:text-zinc-700 dark:text-zinc-500 dark:hover:text-zinc-200 transition-colors shrink-0 rounded-lg hover:bg-zinc-200/60 dark:hover:bg-zinc-800 flex items-center justify-center mb-0.5" title="Attach Document">
+              <i data-lucide="paperclip" class="w-4 h-4"></i>
+            </button>
+
+            <!-- Prompt Input Textarea (Sleek single-line default, expands gracefully) -->
+            <textarea id="promptInput" rows="1" class="flex-1 bg-transparent border-0 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-0 resize-none max-h-40 py-2 px-2 leading-relaxed h-[36px]" placeholder="Ask a question about your documents..."></textarea>
+
+            <!-- Send Button -->
+            <button type="submit" id="sendBtn" class="h-8 w-8 rounded-lg bg-zinc-200 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 cursor-not-allowed transition-all shrink-0 flex items-center justify-center hover:enabled:bg-zinc-900 hover:enabled:text-white dark:hover:enabled:bg-zinc-100 dark:hover:enabled:text-zinc-950 mb-0.5" disabled title="Send message">
+              <i data-lucide="arrow-up" class="w-4 h-4"></i>
+            </button>
+          </form>
+
+          <!-- Input Footer Help Text -->
+          <div class="flex items-center justify-between mt-2 px-1 text-[11px] text-zinc-400 dark:text-zinc-500 font-mono">
+            <span>Press <kbd class="px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 text-[10px]">Enter</kbd> to send, <kbd class="px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 text-[10px]">Shift+Enter</kbd> for newline</span>
+            <span class="hidden sm:inline">Type anywhere to focus</span>
           </div>
         </div>
       </div>
-
     </main>
   </div>
 
-  <!-- Toast Notification Container -->
-  <div class="toast-container" id="toastContainer"></div>
+  <!-- Toast Notification (Monochromatic pill) -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-12 opacity-0 pointer-events-none transition-all duration-200 px-3.5 py-2 rounded-lg bg-zinc-900 text-zinc-100 dark:bg-zinc-100 dark:text-zinc-950 font-medium text-xs shadow-md border border-zinc-800 dark:border-zinc-200 flex items-center gap-2">
+    <i data-lucide="check" class="w-3.5 h-3.5"></i>
+    <span id="toastMsg">Operation successful</span>
+  </div>
 
   <!-- Application Logic -->
   <script>
     // State Management
-    let currentSessionId = localStorage.getItem('documind_session_id');
-    if (!currentSessionId) {
-      currentSessionId = 'session-' + Math.random().toString(36).substring(2, 9);
-      localStorage.setItem('documind_session_id', currentSessionId);
-    }
-    document.getElementById('sessionDisplay').textContent = currentSessionId;
+    let currentSessionId = localStorage.getItem('documind-session-id') || 'session-' + Math.random().toString(36).substring(2, 9);
+    let isGenerating = false;
+    let documentsList = [];
 
+    // DOM Elements
     const chatMessages = document.getElementById('chatMessages');
-    const emptyState = document.getElementById('emptyState');
-    const userInput = document.getElementById('userInput');
-    const btnSend = document.getElementById('btnSend');
-    const dropZone = document.getElementById('dropZone');
+    const welcomeState = document.getElementById('welcomeState');
+    const chatForm = document.getElementById('chatForm');
+    const promptInput = document.getElementById('promptInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const sessionIdInput = document.getElementById('sessionIdInput');
+    const setSessionBtn = document.getElementById('setSessionBtn');
+    const headerSessionId = document.getElementById('headerSessionId');
+    const headerSessionCopy = document.getElementById('headerSessionCopy');
+    const newChatBtn = document.getElementById('newChatBtn');
+    const clearChatMemoryBtn = document.getElementById('clearChatMemoryBtn');
+    const sidebar = document.getElementById('sidebar');
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const themeToggle = document.getElementById('themeToggle');
+    const themeSun = document.getElementById('themeSun');
+    const themeMoon = document.getElementById('themeMoon');
+    const dropzone = document.getElementById('dropzone');
     const fileInput = document.getElementById('fileInput');
     const uploadStatus = document.getElementById('uploadStatus');
-    const btnIngestText = document.getElementById('btnIngestText');
-    const rawTextInput = document.getElementById('rawTextInput');
-    const btnResetSession = document.getElementById('btnResetSession');
-    const btnThemeToggle = document.getElementById('btnThemeToggle');
+    const uploadFileName = document.getElementById('uploadFileName');
+    const uploadPercent = document.getElementById('uploadPercent');
+    const uploadProgressBar = document.getElementById('uploadProgressBar');
+    const documentList = document.getElementById('documentList');
+    const docCountBadge = document.getElementById('docCountBadge');
+    const refreshDocsBtn = document.getElementById('refreshDocsBtn');
+    const clearAllDocsBtn = document.getElementById('clearAllDocsBtn');
+    const docDrawerTrigger = document.getElementById('docDrawerTrigger');
 
-    // Toast helper
-    function showToast(message, type = 'info') {
-      const container = document.getElementById('toastContainer');
-      const toast = document.createElement('div');
-      toast.className = `toast ${type}`;
-      toast.innerHTML = `<span>${message}</span>`;
-      container.appendChild(toast);
-      setTimeout(() => {
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateX(100%)';
-        toast.style.transition = 'all 0.3s ease';
-        setTimeout(() => toast.remove(), 300);
-      }, 4000);
-    }
-
-    // Theme Toggle
-    let isDark = localStorage.getItem('documind_theme') !== 'light';
-    function applyTheme() {
-      if (isDark) {
-        document.documentElement.removeAttribute('data-theme');
+    // Theme System
+    function initTheme() {
+      const savedTheme = localStorage.getItem('documind-theme') || 
+        (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+      if (savedTheme === 'dark') {
+        document.documentElement.classList.add('dark');
+        themeSun.classList.add('hidden');
+        themeMoon.classList.remove('hidden');
       } else {
-        document.documentElement.setAttribute('data-theme', 'light');
+        document.documentElement.classList.remove('dark');
+        themeSun.classList.remove('hidden');
+        themeMoon.classList.add('hidden');
       }
-      localStorage.setItem('documind_theme', isDark ? 'dark' : 'light');
     }
-    applyTheme();
-    btnThemeToggle.addEventListener('click', () => {
-      isDark = !isDark;
-      applyTheme();
+
+    themeToggle.addEventListener('click', () => {
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('documind-theme', isDark ? 'dark' : 'light');
+      themeSun.classList.toggle('hidden', isDark);
+      themeMoon.classList.toggle('hidden', !isDark);
+      lucide.createIcons();
     });
 
-    // Auto-grow textarea
-    userInput.addEventListener('input', () => {
-      userInput.style.height = 'auto';
-      userInput.style.height = Math.min(userInput.scrollHeight, 160) + 'px';
-      document.getElementById('charCount').textContent = `${userInput.value.length} characters`;
+    // Session Management
+    function updateSessionDisplay() {
+      sessionIdInput.value = currentSessionId;
+      headerSessionId.textContent = currentSessionId;
+      localStorage.setItem('documind-session-id', currentSessionId);
+    }
+
+    setSessionBtn.addEventListener('click', () => {
+      const newId = sessionIdInput.value.trim();
+      if (newId) {
+        currentSessionId = newId;
+        updateSessionDisplay();
+        showToast('Active session: ' + newId);
+        loadChatHistory();
+      }
     });
 
-    // Enter to Send
-    userInput.addEventListener('keydown', (e) => {
+    headerSessionCopy.addEventListener('click', () => {
+      navigator.clipboard.writeText(currentSessionId).then(() => showToast('Session ID copied'));
+    });
+
+    newChatBtn.addEventListener('click', () => {
+      currentSessionId = 'session-' + Math.random().toString(36).substring(2, 9);
+      updateSessionDisplay();
+      clearChatUI();
+      showToast('New thread started');
+    });
+
+    clearChatMemoryBtn.addEventListener('click', async () => {
+      if (!confirm('Clear conversational memory for session: ' + currentSessionId + '?')) return;
+      try {
+        const res = await fetch('/api/rag/chat/' + encodeURIComponent(currentSessionId), { method: 'DELETE' });
+        if (res.ok) {
+          clearChatUI();
+          showToast('Memory reset for current session');
+        }
+      } catch (e) {
+        showToast('Failed to reset memory');
+      }
+    });
+
+    // Sidebar Toggle
+    sidebarToggle.addEventListener('click', () => {
+      sidebar.classList.toggle('hidden');
+    });
+
+    docDrawerTrigger.addEventListener('click', () => {
+      if (sidebar.classList.contains('hidden')) {
+        sidebar.classList.remove('hidden');
+      }
+      fileInput.click();
+    });
+
+    // Toast Utility
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMsg');
+      toastMsg.textContent = msg;
+      toast.classList.remove('translate-y-12', 'opacity-0', 'pointer-events-none');
+      toast.classList.add('translate-y-0', 'opacity-100');
+      setTimeout(() => {
+        toast.classList.add('translate-y-12', 'opacity-0', 'pointer-events-none');
+        toast.classList.remove('translate-y-0', 'opacity-100');
+      }, 2400);
+    }
+
+    // Auto-growing Textarea & Enter-to-send
+    function adjustPromptInputHeight() {
+      promptInput.style.height = '36px';
+      const scrollH = promptInput.scrollHeight;
+      if (scrollH > 36) {
+        promptInput.style.height = Math.min(scrollH, 160) + 'px';
+      }
+    }
+
+    promptInput.addEventListener('input', () => {
+      adjustPromptInputHeight();
+      
+      const hasText = promptInput.value.trim().length > 0;
+      sendBtn.disabled = !hasText || isGenerating;
+      if (hasText && !isGenerating) {
+        sendBtn.classList.remove('cursor-not-allowed', 'bg-zinc-200', 'dark:bg-zinc-800', 'text-zinc-400', 'dark:text-zinc-500');
+        sendBtn.classList.add('bg-zinc-900', 'text-white', 'dark:bg-zinc-100', 'dark:text-zinc-950');
+      } else {
+        sendBtn.classList.add('cursor-not-allowed', 'bg-zinc-200', 'dark:bg-zinc-800', 'text-zinc-400', 'dark:text-zinc-500');
+        sendBtn.classList.remove('bg-zinc-900', 'text-white', 'dark:bg-zinc-100', 'dark:text-zinc-950');
+      }
+    });
+
+    promptInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
-        sendMessage();
-      }
-    });
-
-    btnSend.addEventListener('click', sendMessage);
-
-    function sendSuggested(text) {
-      userInput.value = text;
-      sendMessage();
-    }
-
-    // Send Query
-    async function sendMessage() {
-      const query = userInput.value.trim();
-      if (!query) return;
-
-      // Hide empty state
-      if (emptyState) emptyState.style.display = 'none';
-
-      // Append user bubble
-      appendMessage('user', query);
-      userInput.value = '';
-      userInput.style.height = 'auto';
-      document.getElementById('charCount').textContent = '0 characters';
-      btnSend.disabled = true;
-
-      // Append typing indicator
-      const typingElem = appendTypingIndicator();
-
-      try {
-        const response = await fetch('/api/rag/ask', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            question: query,
-            sessionId: currentSessionId
-          })
-        });
-
-        typingElem.remove();
-
-        if (!response.ok) {
-          const errData = await response.json().catch(() => ({}));
-          throw new Error(errData.error || `Server responded with ${response.status}`);
+        if (!sendBtn.disabled) {
+          chatForm.dispatchEvent(new Event('submit'));
         }
-
-        const data = await response.json();
-        appendMessage('assistant', data.answer, data.sources);
-      } catch (err) {
-        typingElem.remove();
-        appendMessage('assistant', `⚠️ **Error communicating with DocuMind:** ${err.message}\n\nPlease try again in a few moments.`);
-        showToast(err.message, 'error');
-      } finally {
-        btnSend.disabled = false;
-        userInput.focus();
       }
-    }
-
-    // Append Message to Thread
-    function appendMessage(role, content, sources = []) {
-      const row = document.createElement('div');
-      row.className = `message-row ${role}`;
-
-      const avatar = document.createElement('div');
-      avatar.className = `avatar ${role === 'user' ? 'user-avatar' : 'bot-avatar'}`;
-      avatar.textContent = role === 'user' ? 'U' : 'DM';
-
-      const container = document.createElement('div');
-      container.className = 'bubble-container';
-
-      const bubble = document.createElement('div');
-      bubble.className = 'bubble';
-
-      if (role === 'assistant') {
-        bubble.innerHTML = marked.parse(content);
-        bubble.querySelectorAll('pre code').forEach((block) => {
-          hljs.highlightElement(block);
-        });
-
-        // Add Sources Collapsible if available
-        if (sources && sources.length > 0) {
-          const sourcesSec = document.createElement('div');
-          sourcesSec.className = 'sources-accordion';
-          sourcesSec.innerHTML = `
-            <button class="sources-toggle" onclick="toggleSources(this)">
-              <span>📑 Sources (${sources.length})</span>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
-            </button>
-            <div class="sources-list" style="display: none;">
-              ${sources.map(s => `
-                <div class="source-item">
-                  <div class="source-header">
-                    <span class="source-title">${s.fileName || 'Ingested Document'}</span>
-                    <span class="source-score">Relevance: ${Math.round((s.score || 0) * 100)}%</span>
-                  </div>
-                  <div class="source-snippet">${escapeHtml(s.text)}</div>
-                </div>
-              `).join('')}
-            </div>
-          `;
-          bubble.appendChild(sourcesSec);
-        }
-      } else {
-        bubble.textContent = content;
-      }
-
-      container.appendChild(bubble);
-      row.appendChild(avatar);
-      row.appendChild(container);
-      chatMessages.appendChild(row);
-      chatMessages.scrollTop = chatMessages.scrollHeight;
-    }
-
-    function toggleSources(btn) {
-      const list = btn.nextElementSibling;
-      const isHidden = list.style.display === 'none';
-      list.style.display = isHidden ? 'flex' : 'none';
-      btn.querySelector('svg').style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
-    }
-
-    function escapeHtml(text) {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
-    }
-
-    // Typing indicator element
-    function appendTypingIndicator() {
-      const row = document.createElement('div');
-      row.className = 'message-row assistant';
-
-      const avatar = document.createElement('div');
-      avatar.className = 'avatar bot-avatar';
-      avatar.textContent = 'DM';
-
-      const container = document.createElement('div');
-      container.className = 'bubble-container';
-
-      const bubble = document.createElement('div');
-      bubble.className = 'bubble';
-      bubble.innerHTML = `
-        <div class="typing-indicator">
-          <div class="typing-dot"></div>
-          <div class="typing-dot"></div>
-          <div class="typing-dot"></div>
-        </div>
-      `;
-
-      container.appendChild(bubble);
-      row.appendChild(avatar);
-      row.appendChild(container);
-      chatMessages.appendChild(row);
-      chatMessages.scrollTop = chatMessages.scrollHeight;
-      return row;
-    }
-
-    // Drag and Drop & File Upload
-    ['dragenter', 'dragover'].forEach(name => {
-      dropZone.addEventListener(name, (e) => {
-        e.preventDefault();
-        dropZone.classList.add('dragover');
-      });
     });
 
-    ['dragleave', 'drop'].forEach(name => {
-      dropZone.addEventListener(name, (e) => {
-        e.preventDefault();
-        dropZone.classList.remove('dragover');
-      });
+    // Global Keyboard Focus (ChatGPT-style)
+    window.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key.length === 1) {
+        promptInput.focus();
+      }
     });
 
-    dropZone.addEventListener('drop', (e) => {
-      const files = e.dataTransfer.files;
-      if (files.length > 0) handleFileUpload(files[0]);
+    // File Upload Handling
+    dropzone.addEventListener('click', () => fileInput.click());
+    
+    dropzone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropzone.classList.add('border-zinc-400', 'dark:border-zinc-500');
+    });
+
+    dropzone.addEventListener('dragleave', () => {
+      dropzone.classList.remove('border-zinc-400', 'dark:border-zinc-500');
+    });
+
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('border-zinc-400', 'dark:border-zinc-500');
+      if (e.dataTransfer.files.length > 0) {
+        uploadFile(e.dataTransfer.files[0]);
+      }
     });
 
     fileInput.addEventListener('change', () => {
-      if (fileInput.files.length > 0) handleFileUpload(fileInput.files[0]);
+      if (fileInput.files.length > 0) {
+        uploadFile(fileInput.files[0]);
+      }
     });
 
-    async function handleFileUpload(file) {
-      uploadStatus.innerHTML = `<span style="color: var(--accent-cyan)">⏳ Uploading and embedding ${escapeHtml(file.name)}...</span>`;
-      
+    async function uploadFile(file) {
+      if (!file) return;
+      uploadStatus.classList.remove('hidden');
+      uploadFileName.textContent = file.name;
+      uploadPercent.textContent = 'Uploading...';
+      uploadProgressBar.style.width = '40%';
+
       const formData = new FormData();
       formData.append('file', file);
 
@@ -1222,95 +544,313 @@
           body: formData
         });
 
+        uploadProgressBar.style.width = '85%';
         const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data.error || 'Upload failed');
+
+        if (response.ok) {
+          uploadProgressBar.style.width = '100%';
+          uploadPercent.textContent = 'Complete';
+          showToast(`Ingested ${data.chunksCount} chunks`);
+          setTimeout(() => uploadStatus.classList.add('hidden'), 2200);
+          fetchDocuments();
+          fileInput.value = '';
+        } else {
+          uploadPercent.textContent = 'Error';
+          uploadProgressBar.style.backgroundColor = '#f43f5e';
+          showToast(data.error || 'Upload failed');
+          setTimeout(() => {
+            uploadStatus.classList.add('hidden');
+            uploadProgressBar.style.backgroundColor = '';
+          }, 3500);
         }
-
-        uploadStatus.innerHTML = `<span style="color: var(--accent-emerald)">✓ Ingested <strong>${escapeHtml(data.fileName)}</strong> (${data.chunksCount} chunks)</span>`;
-        showToast(`Successfully embedded ${data.fileName} into pgvector!`, 'success');
-
-        // Add a system welcome notice in chat
-        if (emptyState) emptyState.style.display = 'none';
-        appendMessage('assistant', `✅ Successfully ingested document **${data.fileName}** into PostgreSQL pgvector (${data.chunksCount} semantic chunks generated).\n\nYou can now ask questions about it!`);
       } catch (err) {
-        uploadStatus.innerHTML = `<span style="color: var(--accent-rose)">✕ Upload failed: ${escapeHtml(err.message)}</span>`;
-        showToast(err.message, 'error');
-      } finally {
-        fileInput.value = '';
+        uploadPercent.textContent = 'Network Error';
+        showToast('Upload network error');
+        setTimeout(() => uploadStatus.classList.add('hidden'), 3000);
       }
     }
 
-    // Ingest Raw Text
-    btnIngestText.addEventListener('click', async () => {
-      const text = rawTextInput.value.trim();
-      if (!text) {
-        showToast('Please enter text to ingest', 'error');
+    // Document Store Management
+    async function fetchDocuments() {
+      try {
+        const res = await fetch('/api/rag/documents');
+        if (res.ok) {
+          documentsList = await res.json();
+          renderDocumentList();
+        }
+      } catch (e) {
+        console.warn('Could not fetch document inventory:', e);
+      }
+    }
+
+    function formatBytes(bytes) {
+      if (!bytes || bytes === 0) return '0 B';
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+    function renderDocumentList() {
+      docCountBadge.textContent = documentsList.length;
+      if (documentsList.length === 0) {
+        documentList.innerHTML = `
+          <div class="text-center py-8 text-xs text-zinc-400 dark:text-zinc-500">
+            No documents indexed.<br>Drop a PDF or Markdown file to begin.
+          </div>
+        `;
         return;
       }
 
-      btnIngestText.disabled = true;
-      btnIngestText.textContent = 'Ingesting...';
+      documentList.innerHTML = documentsList.map(doc => `
+        <div class="group flex items-center justify-between px-3 py-2.5 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800/70 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-850/60 transition-all">
+          <div class="flex items-center gap-2.5 min-w-0 pr-2">
+            <div class="w-6 h-6 rounded bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center shrink-0 text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-300 transition-colors">
+              <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+            </div>
+            <div class="min-w-0">
+              <div class="text-xs font-medium text-zinc-800 dark:text-zinc-200 truncate" title="${doc.fileName}">${doc.fileName}</div>
+              <div class="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono flex items-center gap-1.5 mt-0.5">
+                <span>${doc.chunkCount} chunks</span>
+                <span>·</span>
+                <span>${formatBytes(doc.fileSize)}</span>
+              </div>
+            </div>
+          </div>
+          <button onclick="deleteDoc('${encodeURIComponent(doc.fileName)}')" class="opacity-0 group-hover:opacity-100 p-1.5 rounded-md text-zinc-400 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all shrink-0" title="Delete document">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+      `).join('');
 
+      lucide.createIcons();
+    }
+
+    async function deleteDoc(encodedName) {
+      const fileName = decodeURIComponent(encodedName);
+      if (!confirm(`Purge embeddings for "${fileName}"?`)) return;
       try {
-        const res = await fetch('/api/rag/ingest', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text })
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Ingestion failed');
+        const res = await fetch('/api/rag/documents/' + encodedName, { method: 'DELETE' });
+        if (res.ok) {
+          showToast(`Purged ${fileName}`);
+          fetchDocuments();
+        }
+      } catch (e) {
+        showToast('Failed to delete document');
+      }
+    }
 
-        rawTextInput.value = '';
-        showToast(data.message || 'Text ingested successfully!', 'success');
-        if (emptyState) emptyState.style.display = 'none';
-        appendMessage('assistant', `✅ Ingested text into pgvector store: "${text.substring(0, 80)}..."`);
-      } catch (err) {
-        showToast(err.message, 'error');
-      } finally {
-        btnIngestText.disabled = false;
-        btnIngestText.innerHTML = `
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-          Ingest into pgvector
-        `;
+    clearAllDocsBtn.addEventListener('click', async () => {
+      if (!confirm('TRUNCATE: Permanently delete all document embeddings from pgvector?')) return;
+      try {
+        const res = await fetch('/api/rag/documents', { method: 'DELETE' });
+        if (res.ok) {
+          showToast('Store cleared');
+          fetchDocuments();
+        }
+      } catch (e) {
+        showToast('Failed to purge store');
       }
     });
 
-    // Purge Vector Store Documents
-    const btnClearDocs = document.getElementById('btnClearDocs');
-    if (btnClearDocs) {
-      btnClearDocs.addEventListener('click', async () => {
-        if (!confirm('Are you sure you want to purge all documents from pgvector? All indexed embeddings will be permanently deleted.')) return;
-        try {
-          const res = await fetch('/api/rag/documents', { method: 'DELETE' });
-          const data = await res.json();
-          showToast(data.message || 'All documents purged.', 'success');
-          appendMessage('assistant', '🗑️ All document embeddings have been purged from the pgvector database. You can now upload fresh documents.');
-        } catch (err) {
-          showToast('Failed to purge documents: ' + err.message, 'error');
+    refreshDocsBtn.addEventListener('click', () => {
+      fetchDocuments();
+      showToast('Refreshed inventory');
+    });
+
+    // Chat Submission
+    chatForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const question = promptInput.value.trim();
+      if (!question || isGenerating) return;
+
+      welcomeState.classList.add('hidden');
+      appendMessage('user', question);
+      
+      promptInput.value = '';
+      promptInput.style.height = '36px';
+      promptInput.dispatchEvent(new Event('input'));
+
+      const loadingId = appendLoadingSkeleton();
+      isGenerating = true;
+
+      try {
+        const res = await fetch('/api/rag/ask', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question: question, sessionId: currentSessionId })
+        });
+
+        const data = await res.json();
+        removeLoadingSkeleton(loadingId);
+
+        if (res.ok) {
+          appendMessage('assistant', data.answer, data.sources);
+        } else {
+          appendMessage('assistant', `⚠️ **Error:** ${data.error || 'Failed to generate completion.'}`);
         }
+      } catch (err) {
+        removeLoadingSkeleton(loadingId);
+        appendMessage('assistant', '⚠️ **Connection Error:** Could not connect to DocuMind backend on `:8080`. Please verify the server is running.');
+      } finally {
+        isGenerating = false;
+        promptInput.focus();
+      }
+    });
+
+    function appendMessage(role, text, sources = null) {
+      welcomeState.classList.add('hidden');
+      const msgDiv = document.createElement('div');
+      msgDiv.className = role === 'user' 
+        ? 'flex justify-end max-w-3xl mx-auto w-full' 
+        : 'flex justify-start max-w-3xl mx-auto w-full';
+
+      if (role === 'user') {
+        msgDiv.innerHTML = `
+          <div class="max-w-[85%] sm:max-w-xl rounded-xl bg-zinc-800/95 dark:bg-zinc-850 border border-zinc-700/50 dark:border-zinc-800 text-zinc-100 px-4 sm:px-5 py-3 text-sm shadow-2xs leading-relaxed whitespace-pre-wrap">
+            ${escapeHtml(text)}
+          </div>
+        `;
+      } else {
+        const parsedHtml = marked.parse(text);
+        let sourcesHtml = '';
+
+        if (sources && sources.length > 0) {
+          const accordionId = 'src-' + Math.random().toString(36).substring(2, 9);
+          sourcesHtml = `
+            <div class="mt-3.5 pt-3 border-t border-zinc-200 dark:border-zinc-800/80">
+              <button onclick="toggleSources('${accordionId}')" class="flex items-center gap-1.5 text-[11px] font-mono font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">
+                <i data-lucide="layers" class="w-3 h-3"></i>
+                <span>Sources (${sources.length} citations)</span>
+                <i data-lucide="chevron-down" id="${accordionId}-icon" class="w-3 h-3 transition-transform duration-150"></i>
+              </button>
+              
+              <div id="${accordionId}" class="mt-2.5 space-y-2 hidden">
+                ${sources.map(src => {
+                  const scorePct = Math.round((src.score || 0) * 100);
+                  return `
+                    <div class="p-2.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/60 text-xs">
+                      <div class="flex items-center justify-between mb-1.5">
+                        <span class="font-medium text-zinc-700 dark:text-zinc-300 truncate max-w-[220px] flex items-center gap-1.5 text-[11px]">
+                          <i data-lucide="file" class="w-3 h-3 text-zinc-400"></i>
+                          ${escapeHtml(src.fileName || 'document')}
+                        </span>
+                        <span class="px-1.5 py-0.5 rounded text-[10px] font-mono text-zinc-500 dark:text-zinc-400 bg-zinc-200/60 dark:bg-zinc-800 border border-zinc-300/40 dark:border-zinc-700/50">
+                          ${scorePct}% match
+                        </span>
+                      </div>
+                      <p class="text-zinc-600 dark:text-zinc-400 font-mono text-[11px] leading-relaxed line-clamp-3 bg-white dark:bg-zinc-900/60 p-2 rounded border border-zinc-100 dark:border-zinc-800/80">
+                        ${escapeHtml(src.text)}
+                      </p>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          `;
+        }
+
+        msgDiv.innerHTML = `
+          <div class="flex gap-3.5 max-w-3xl w-full">
+            <div class="w-7 h-7 rounded-lg bg-zinc-100 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+              <i data-lucide="sparkle" class="w-3.5 h-3.5"></i>
+            </div>
+            <div class="min-w-0 flex-1 rounded-xl bg-zinc-100/70 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-zinc-800/80 px-4 sm:px-5 py-3.5 text-sm text-zinc-800 dark:text-zinc-200 leading-relaxed shadow-2xs">
+              <div class="chat-prose">${parsedHtml}</div>
+              ${sourcesHtml}
+            </div>
+          </div>
+        `;
+      }
+
+      chatMessages.appendChild(msgDiv);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+      lucide.createIcons();
+
+      msgDiv.querySelectorAll('pre code').forEach((block) => {
+        hljs.highlightElement(block);
       });
     }
 
-    // Reset Session / New Chat
-    btnResetSession.addEventListener('click', async () => {
-      if (!confirm('Start a new session? This will reset conversational memory history for the active session.')) return;
-
-      try {
-        await fetch(`/api/rag/chat/${currentSessionId}`, { method: 'DELETE' });
-      } catch (ignored) {}
-
-      currentSessionId = 'session-' + Math.random().toString(36).substring(2, 9);
-      localStorage.setItem('documind_session_id', currentSessionId);
-      document.getElementById('sessionDisplay').textContent = currentSessionId;
-
-      // Clear UI chat messages
-      chatMessages.innerHTML = '';
-      if (emptyState) {
-        emptyState.style.display = 'block';
-        chatMessages.appendChild(emptyState);
+    window.toggleSources = function(id) {
+      const container = document.getElementById(id);
+      const icon = document.getElementById(id + '-icon');
+      if (container.classList.contains('hidden')) {
+        container.classList.remove('hidden');
+        icon.classList.add('rotate-180');
+      } else {
+        container.classList.add('hidden');
+        icon.classList.remove('rotate-180');
       }
-      showToast('Conversation memory reset. New session started.', 'success');
+    };
+
+    function appendLoadingSkeleton() {
+      const id = 'loading-' + Date.now();
+      const loadDiv = document.createElement('div');
+      loadDiv.id = id;
+      loadDiv.className = 'flex gap-3.5 max-w-3xl mx-auto w-full';
+      loadDiv.innerHTML = `
+        <div class="w-7 h-7 rounded-lg bg-zinc-100 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+          <i data-lucide="sparkle" class="w-3.5 h-3.5"></i>
+        </div>
+        <div class="rounded-xl bg-zinc-100/70 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-zinc-800/80 px-4 sm:px-5 py-3 text-xs flex items-center gap-2.5 text-zinc-500 dark:text-zinc-400 font-mono shadow-2xs">
+          <span class="w-2 h-2 rounded-full bg-zinc-400 animate-pulse"></span>
+          <span>Searching pgvector & synthesizing answer...</span>
+        </div>
+      `;
+      chatMessages.appendChild(loadDiv);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+      lucide.createIcons();
+      return id;
+    }
+
+    function removeLoadingSkeleton(id) {
+      const el = document.getElementById(id);
+      if (el) el.remove();
+    }
+
+    function clearChatUI() {
+      chatMessages.innerHTML = '';
+      chatMessages.appendChild(welcomeState);
+      welcomeState.classList.remove('hidden');
+    }
+
+    async function loadChatHistory() {
+      try {
+        const res = await fetch('/api/rag/chat/' + encodeURIComponent(currentSessionId) + '/history');
+        if (res.ok) {
+          const history = await res.json();
+          if (history && history.length > 0) {
+            clearChatUI();
+            welcomeState.classList.add('hidden');
+            history.forEach(item => appendMessage(item.role, item.content));
+          }
+        }
+      } catch (e) {
+        console.warn('Could not load session history:', e);
+      }
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+      return text.replace(/[&<>"']/g, (m) => map[m]);
+    }
+
+    window.useStarter = function(prompt) {
+      promptInput.value = prompt;
+      promptInput.focus();
+      promptInput.dispatchEvent(new Event('input'));
+    };
+
+    // Initialization
+    window.addEventListener('DOMContentLoaded', () => {
+      initTheme();
+      updateSessionDisplay();
+      fetchDocuments();
+      adjustPromptInputHeight();
+      lucide.createIcons();
+      promptInput.focus();
     });
   </script>
 </body>
