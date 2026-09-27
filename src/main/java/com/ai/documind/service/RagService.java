@@ -29,16 +29,12 @@ import dev.langchain4j.store.embedding.pgvector.PgVectorEmbeddingStore;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
-
 import javax.sql.DataSource;
 import java.io.InputStream;
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -57,154 +53,37 @@ public class RagService {
     private final EmbeddingModel embeddingModel;
     private final ChatLanguageModel chatLanguageModel;
     private final JdbcTemplate jdbcTemplate;
+    private final DataSource dataSource;
     private EmbeddingStore<TextSegment> embeddingStore;
 
     // In-memory conversation memory keyed by sessionId
     private final Map<String, ChatMemory> chatMemories = new ConcurrentHashMap<>();
 
-    @Value("${spring.datasource.url:}")
-    private String datasourceUrl;
-
-    @Value("${spring.datasource.username:}")
-    private String dbUser;
-
-    @Value("${spring.datasource.password:}")
-    private String dbPassword;
-
-    public RagService(EmbeddingModel embeddingModel, ChatLanguageModel chatLanguageModel, JdbcTemplate jdbcTemplate) {
+    public RagService(EmbeddingModel embeddingModel,
+                      ChatLanguageModel chatLanguageModel,
+                      JdbcTemplate jdbcTemplate,
+                      DataSource dataSource) {
         this.embeddingModel = embeddingModel;
         this.chatLanguageModel = chatLanguageModel;
         this.jdbcTemplate = jdbcTemplate;
+        this.dataSource = dataSource;
     }
 
     @PostConstruct
     public void init() {
         try {
-            DataSource ds = buildDataSource();
             this.embeddingStore = PgVectorEmbeddingStore.datasourceBuilder()
-                    .datasource(ds)
+                    .datasource(dataSource)
                     .table("doc_embeddings")
                     .dimension(768) // Gemini gemini-embedding-001 vector dimension size
                     .createTable(true)
                     .dropTableFirst(false)
                     .build();
-            log.info("PgVectorEmbeddingStore successfully initialized with table 'doc_embeddings' (dimension=768)");
+            log.info("PgVectorEmbeddingStore successfully initialized with injected Spring DataSource");
         } catch (Exception e) {
             log.error("Failed to initialize PgVectorEmbeddingStore: {}", e.getMessage(), e);
             throw new RuntimeException("Could not initialize PgVectorEmbeddingStore: " + e.getMessage(), e);
         }
-    }
-
-    /**
-     * Dynamically builds a DataSource by resolving URL, host, port, database, credentials,
-     * and SSL requirements from Spring properties or environment variables (e.g. Supabase, Render, Railway).
-     */
-    private DataSource buildDataSource() {
-        // 1. Resolve raw URL: check @Value, then standard cloud environment variables
-        String rawUrl = datasourceUrl;
-        if (rawUrl == null || rawUrl.isBlank()) {
-            rawUrl = getEnvFirst("DATABASE_URL", "SPRING_DATASOURCE_URL");
-        }
-        if (rawUrl == null || rawUrl.isBlank()) {
-            rawUrl = "jdbc:postgresql://localhost:5432/documind_db";
-        }
-
-        // 2. Resolve username with fallback to environment variables
-        String user = dbUser;
-        if (user == null || user.isBlank() || "postgres".equalsIgnoreCase(user)) {
-            String envUser = getEnvFirst("DB_USER", "DB_USERNAME", "SPRING_DATASOURCE_USERNAME");
-            if (envUser != null && !envUser.isBlank()) {
-                user = envUser;
-            }
-        }
-        if (user == null || user.isBlank()) {
-            user = "postgres";
-        }
-
-        // 3. Resolve password with fallback to environment variables
-        String password = dbPassword;
-        if (password == null || password.isBlank()) {
-            String envPassword = getEnvFirst("DB_PASSWORD", "SPRING_DATASOURCE_PASSWORD");
-            if (envPassword != null && !envPassword.isBlank()) {
-                password = envPassword;
-            }
-        }
-
-        // 4. Parse URL to seamlessly handle jdbc:postgresql://..., postgresql://..., or postgres://...
-        try {
-            String cleanUrl = rawUrl.startsWith("jdbc:") ? rawUrl.substring(5) : rawUrl;
-            URI uri = new URI(cleanUrl);
-
-            // Extract credentials from URL userInfo if embedded (e.g., postgresql://user:pass@host:port/db)
-            if (uri.getUserInfo() != null && !uri.getUserInfo().isBlank()) {
-                String[] userParts = uri.getUserInfo().split(":", 2);
-                if (userParts.length > 0 && !userParts[0].isBlank()) {
-                    user = userParts[0];
-                }
-                if (userParts.length > 1 && !userParts[1].isBlank()) {
-                    password = userParts[1];
-                }
-            }
-
-            String host = uri.getHost() != null && !uri.getHost().isBlank() ? uri.getHost() : "localhost";
-            int port = uri.getPort() > 0 ? uri.getPort() : 5432;
-            String path = uri.getPath();
-            String database = (path != null && path.length() > 1) ? path.substring(1) : "postgres";
-            String query = uri.getQuery();
-
-            // For remote cloud deployments (e.g. Supabase, Render, Railway), enforce sslmode=require if not specified
-            boolean isLocal = "localhost".equalsIgnoreCase(host) || "127.0.0.1".equals(host);
-            if (!isLocal && (query == null || !query.contains("sslmode="))) {
-                if (query == null || query.isBlank()) {
-                    query = "sslmode=require";
-                } else {
-                    query = query + "&sslmode=require";
-                }
-            }
-
-            StringBuilder jdbcUrl = new StringBuilder("jdbc:postgresql://")
-                    .append(host).append(":").append(port).append("/").append(database);
-            if (query != null && !query.isBlank()) {
-                jdbcUrl.append("?").append(query);
-            }
-
-            DriverManagerDataSource ds = new DriverManagerDataSource();
-            ds.setDriverClassName("org.postgresql.Driver");
-            ds.setUrl(jdbcUrl.toString());
-            if (user != null && !user.isBlank()) {
-                ds.setUsername(user);
-            }
-            if (password != null && !password.isBlank()) {
-                ds.setPassword(password);
-            }
-
-            log.info("Configured PgVector datasource targeting host={}, port={}, database={}, user={}",
-                    host, port, database, user);
-            return ds;
-        } catch (Exception e) {
-            log.warn("Failed to parse database URL '{}', applying direct connection URL: {}", rawUrl, e.getMessage());
-            DriverManagerDataSource ds = new DriverManagerDataSource();
-            ds.setDriverClassName("org.postgresql.Driver");
-            String finalUrl = rawUrl.startsWith("jdbc:") ? rawUrl : "jdbc:" + rawUrl;
-            ds.setUrl(finalUrl);
-            if (user != null && !user.isBlank()) ds.setUsername(user);
-            if (password != null && !password.isBlank()) ds.setPassword(password);
-            return ds;
-        }
-    }
-
-    private String getEnvFirst(String... keys) {
-        for (String key : keys) {
-            String val = System.getenv(key);
-            if (val != null && !val.isBlank()) {
-                return val;
-            }
-            val = System.getProperty(key);
-            if (val != null && !val.isBlank()) {
-                return val;
-            }
-        }
-        return null;
     }
 
     /**
