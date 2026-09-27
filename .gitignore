@@ -14,10 +14,11 @@ target/
 .sts4-cache
 
 ### IntelliJ IDEA ###
-.idea
+.idea/
 *.iws
 *.iml
 *.ipr
+out/
 
 ### NetBeans ###
 /nbproject/private/
@@ -31,4 +32,17 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Secrets & Environment ###
 .env
+.env.*
+!.env.example
+
+### Logs & OS Files ###
+*.log
+.DS_Store
+Thumbs.db
+
+### Local Scratch & Browser Artifacts ###
+/documind-architecture.html
+/documind-archify-showcase.html

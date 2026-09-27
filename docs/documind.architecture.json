@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "DocuMind RAG Architecture",
+    "output": "documind-archify-showcase.html",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "query-path",
+        "label": "RAG Query Lifecycle",
+        "focus": ["client", "controller", "service", "vectordb", "failover", "groq", "gemini"],
+        "note": "Follows user question through embedding, pgvector cosine search, deduplication, and low-latency Groq LPU generation with Gemini fallback."
+      },
+      {
+        "id": "ingestion",
+        "label": "Document Ingestion & Chunking",
+        "focus": ["client", "controller", "chunker", "embedder", "vectordb"],
+        "note": "Multipart document upload (.pdf, .txt, .md), 800/150 recursive chunking, prior segment purge, and vector persistence."
+      },
+      {
+        "id": "resilience-patterns",
+        "label": "Resilient Failover & Design Patterns",
+        "focus": ["service", "memory", "failover", "groq", "gemini"],
+        "note": "Proxy Pattern failover routing, sliding-window chat memory, and multi-provider strategy."
+      }
+    ]
+  },
+  "components": [
+    { "id": "client", "type": "external", "label": "Client UI", "sublabel": "Browser / REST", "pos": [30, 200], "size": [100, 50] },
+    { "id": "controller", "type": "backend", "label": "RagController", "sublabel": "REST API :8080", "pos": [170, 200], "size": [120, 50], "tag": "Spring Web" },
+    { "id": "memory", "type": "backend", "label": "ChatMemory", "sublabel": "Token Window", "pos": [340, 70], "size": [130, 50], "tag": "20 turns" },
+    { "id": "service", "type": "backend", "label": "RagService", "sublabel": "Core Orchestrator", "pos": [340, 200], "size": [130, 54] },
+    { "id": "vectordb", "type": "database", "label": "pgvector", "sublabel": "PostgreSQL 16", "pos": [340, 310], "size": [130, 50], "tag": "HNSW Cosine" },
+    { "id": "failover", "type": "backend", "label": "Failover Proxy", "sublabel": "ResilientChatModel", "pos": [530, 200], "size": [130, 54], "tag": "Proxy Pattern" },
+    { "id": "groq", "type": "cloud", "label": "Groq LPU", "sublabel": "openai/gpt-oss-120b", "pos": [720, 130], "size": [120, 50], "tag": "Primary (~90ms)" },
+    { "id": "gemini", "type": "cloud", "label": "Gemini Flash", "sublabel": "gemini-3.8-flash", "pos": [720, 270], "size": [120, 50], "tag": "Failover" },
+    { "id": "chunker", "type": "backend", "label": "DocSplitter", "sublabel": "Recursive 800/150", "pos": [170, 420], "size": [120, 50] },
+    { "id": "embedder", "type": "cloud", "label": "Gemini Embed", "sublabel": "gemini-embedding-001", "pos": [340, 420], "size": [130, 50], "tag": "768-D Dim Lock" }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "Spring Boot Core Services", "wraps": ["controller", "memory", "service"] },
+    { "kind": "security-group", "label": "Persistence Layer", "wraps": ["vectordb"] }
+  ],
+  "connections": [
+    { "id": "client-to-ctrl", "from": "client", "to": "controller", "label": "REST Query", "variant": "emphasis", "labelDy": -19 },
+    { "id": "ctrl-to-service", "from": "controller", "to": "service", "label": "askQuestion()", "labelDy": -19 },
+    { "id": "service-to-memory", "from": "service", "to": "memory", "label": "history window", "fromSide": "top", "toSide": "bottom", "labelDy": -19 },
+    { "id": "service-to-vectordb", "from": "service", "to": "vectordb", "label": "similarity search", "fromSide": "bottom", "toSide": "top", "labelAt": [405, 275] },
+    { "id": "service-to-failover", "from": "service", "to": "failover", "label": "grounded prompt", "labelDy": -19 },
+    { "id": "failover-to-groq", "from": "failover", "to": "groq", "label": "primary LPU", "variant": "emphasis", "fromSide": "right", "toSide": "left", "labelAt": [680, 150] },
+    { "id": "failover-to-gemini", "from": "failover", "to": "gemini", "label": "catch 429/503", "variant": "dashed", "fromSide": "right", "toSide": "left", "labelAt": [680, 275] },
+    { "id": "ctrl-to-chunker", "from": "controller", "to": "chunker", "label": "multipart upload", "fromSide": "bottom", "toSide": "top", "labelAt": [230, 335] },
+    { "id": "chunker-to-embedder", "from": "chunker", "to": "embedder", "label": "800-char segments", "labelDy": -19 },
+    { "id": "embedder-to-vectordb", "from": "embedder", "to": "vectordb", "label": "persist 768-d vectors", "fromSide": "top", "toSide": "bottom", "labelDy": -19 }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Design Patterns",
+      "items": [
+        "Proxy Pattern: ResilientFailoverChatModel intercepts 429/503 errors and routes to Gemini without caller awareness",
+        "Adapter Pattern: LangChain4j OpenAiChatModel adapts Groq Cloud REST endpoint to standard Java ChatLanguageModel",
+        "Strategy Pattern: Multi-provider runtime switching via ai.provider=auto|groq|gemini",
+        "Chain of Responsibility: 3-stage key resolution (System Env -> Spring Property -> .env file parser -> Prefix Restorer)"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "RAG Engineering & Optimization",
+      "items": [
+        "800-char semantic chunking preserves full project, technical skills, and experience sections intact",
+        "Ingestion deduplication purges obsolete vectors on re-upload to eliminate duplicate vector crowding",
+        "Retrieval deduplication & Top-8 expansion ensures unique semantic segments reach the prompt context",
+        "Matryoshka Representation Learning: Locks vector output dimensionality to 768-d to align with pgvector schema"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Enterprise Resilience",
+      "items": [
+        "Groq Cloud LPU acceleration delivers sub-400ms time-to-first-token (30x faster than cloud GPU)",
+        "Zero-downtime failover guarantees high availability during provider outages or rate-limit saturation",
+        "Sliding window chat memory prevents token explosion while preserving multi-turn conversational context"
+      ]
+    }
+  ]
+}

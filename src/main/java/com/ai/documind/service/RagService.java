@@ -30,14 +30,17 @@ import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -48,6 +51,7 @@ public class RagService {
 
     private final EmbeddingModel embeddingModel;
     private final ChatLanguageModel chatLanguageModel;
+    private final JdbcTemplate jdbcTemplate;
     private EmbeddingStore<TextSegment> embeddingStore;
 
     // In-memory conversation memory keyed by sessionId
@@ -59,9 +63,10 @@ public class RagService {
     @Value("${spring.datasource.password}")
     private String dbPassword;
 
-    public RagService(EmbeddingModel embeddingModel, ChatLanguageModel chatLanguageModel) {
+    public RagService(EmbeddingModel embeddingModel, ChatLanguageModel chatLanguageModel, JdbcTemplate jdbcTemplate) {
         this.embeddingModel = embeddingModel;
         this.chatLanguageModel = chatLanguageModel;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     @PostConstruct
@@ -80,13 +85,14 @@ public class RagService {
     }
 
     /**
-     * 1. Ingest raw text directly into pgvector.
+     * 1. Ingest raw text directly into pgvector with 800-char semantic chunks.
      */
     public String ingestText(String textContent) {
         Document document = Document.from(textContent);
         document.metadata().add("file_name", "raw-text-input");
 
-        DocumentSplitter splitter = DocumentSplitters.recursive(300, 50);
+        // 800-character chunks with 150-character overlap preserve cohesive project/experience blocks
+        DocumentSplitter splitter = DocumentSplitters.recursive(800, 150);
         List<TextSegment> segments = splitter.split(document);
 
         for (TextSegment segment : segments) {
@@ -99,6 +105,7 @@ public class RagService {
 
     /**
      * 2. Accept and process multipart file upload (.pdf, .txt, .md).
+     * Automatically overwrites / purges prior chunks for the same filename to avoid duplicate pollution.
      */
     public UploadResponse uploadFile(MultipartFile file) {
         if (file == null || file.isEmpty()) {
@@ -133,9 +140,19 @@ public class RagService {
         document.metadata().add("file_name", originalFilename);
         document.metadata().add("file_size", String.valueOf(file.getSize()));
 
-        // Split document into overlapping chunks
-        DocumentSplitter splitter = DocumentSplitters.recursive(300, 50);
+        // Split document into overlapping chunks (800 chars with 150 overlap for optimal coherence)
+        DocumentSplitter splitter = DocumentSplitters.recursive(800, 150);
         List<TextSegment> segments = splitter.split(document);
+
+        // Deduplicate: purge any prior chunks for this exact file before fresh ingestion
+        try {
+            int deleted = jdbcTemplate.update("DELETE FROM doc_embeddings WHERE metadata->>'file_name' = ?", originalFilename);
+            if (deleted > 0) {
+                log.info("Cleared {} existing segments for file '{}' before fresh ingestion", deleted, originalFilename);
+            }
+        } catch (Exception e) {
+            log.warn("Could not delete prior segments for file '{}': {}", originalFilename, e.getMessage());
+        }
 
         // Embed and persist to pgvector
         for (TextSegment segment : segments) {
@@ -179,6 +196,23 @@ public class RagService {
     }
 
     /**
+     * Clear all document embeddings from the vector store.
+     */
+    public void clearAllDocuments() {
+        jdbcTemplate.update("TRUNCATE TABLE doc_embeddings");
+        log.info("Cleared all document embeddings from pgvector.");
+    }
+
+    /**
+     * Delete embeddings for a specific document.
+     */
+    public boolean deleteDocument(String fileName) {
+        int deleted = jdbcTemplate.update("DELETE FROM doc_embeddings WHERE metadata->>'file_name' = ?", fileName);
+        log.info("Deleted {} segments for file '{}'", deleted, fileName);
+        return deleted > 0;
+    }
+
+    /**
      * Export conversation messages for a session.
      */
     public List<ChatMessageDto> getChatHistory(String sessionId) {
@@ -197,22 +231,39 @@ public class RagService {
     }
 
     /**
-     * 3. Ask question with conversational memory and vector similarity search.
+     * 3. Ask question with conversational memory, vector similarity search, and retrieval deduplication.
      */
     public AskResponse askQuestion(String question, String sessionId) {
         String effectiveSessionId = (sessionId != null && !sessionId.isBlank()) ? sessionId.trim() : "default-session";
 
-        // Embed question and query pgvector
+        // Embed question and query pgvector with larger search window
         Embedding queryEmbedding = embeddingModel.embed(question).content();
 
         EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
                 .queryEmbedding(queryEmbedding)
-                .maxResults(4)
-                .minScore(0.5)
+                .maxResults(12)
+                .minScore(0.35)
                 .build();
 
         EmbeddingSearchResult<TextSegment> searchResult = embeddingStore.search(searchRequest);
-        List<EmbeddingMatch<TextSegment>> matches = searchResult.matches();
+        List<EmbeddingMatch<TextSegment>> rawMatches = searchResult.matches();
+
+        // Deduplicate retrieved matches by text content so duplicate vectors don't crowd out the window
+        Set<String> seenTexts = new HashSet<>();
+        List<EmbeddingMatch<TextSegment>> matches = new ArrayList<>();
+        for (EmbeddingMatch<TextSegment> match : rawMatches) {
+            if (match.embedded() != null && match.embedded().text() != null) {
+                String clean = match.embedded().text().trim();
+                if (seenTexts.add(clean)) {
+                    matches.add(match);
+                }
+            }
+        }
+
+        // Cap to top 8 distinct relevant chunks
+        if (matches.size() > 8) {
+            matches = matches.subList(0, 8);
+        }
 
         List<SourceCitation> sources = matches.stream()
                 .map(match -> {
@@ -232,8 +283,9 @@ public class RagService {
         String systemPrompt = "You are DocuMind, an enterprise AI knowledge assistant.\n"
                 + "Answer the user's question accurately, concisely, and helpfully using the provided document context below.\n"
                 + "You must maintain conversational continuity using the chat history.\n"
-                + "If the answer cannot be found in the provided document context or conversation history, state clearly: "
-                + "'I cannot find the answer in the provided documents.'\n\n"
+                + "If the user asks about personal details (such as their name, email, contact info), technical skills, education, or projects, "
+                + "carefully inspect the document context (including resume headers, profile sections, and project entries) to extract the facts.\n"
+                + "Only state 'I cannot find the answer in the provided documents.' if the requested information is genuinely absent from both the context and the conversation history.\n\n"
                 + "--- Document Context ---\n"
                 + (context.isBlank() ? "No matching document context found." : context);
 
@@ -253,12 +305,12 @@ public class RagService {
                 response = chatLanguageModel.generate(messages);
                 break;
             } catch (Exception e) {
-                log.warn("Gemini API call attempt {} failed: {}. Retrying...", attempts, e.getMessage());
+                log.warn("LLM API call attempt {} failed: {}. Retrying...", attempts, e.getMessage());
                 if (attempts >= 3) {
                     throw e;
                 }
                 try {
-                    Thread.sleep(2500L * attempts);
+                    Thread.sleep(1500L * attempts);
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
                     throw new RuntimeException(ie);

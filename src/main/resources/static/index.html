@@ -888,7 +888,7 @@
         </div>
         <div class="stat-row">
           <span class="stat-label">LLM Engine</span>
-          <span class="stat-val">Gemini Flash</span>
+          <span class="stat-val" style="color: #f59e0b;">Groq LPU (Gemini Failover)</span>
         </div>
         <div class="stat-row">
           <span class="stat-label">Embeddings</span>
@@ -902,6 +902,10 @@
           <span class="stat-label">Orchestrator</span>
           <span class="stat-val">LangChain4j 0.35.0</span>
         </div>
+        <button id="btnClearDocs" class="btn-secondary" style="margin-top: 14px; width: 100%; color: #f43f5e; border-color: rgba(244,63,94,0.3); font-size: 0.78rem;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          Purge Vector Store
+        </button>
       </div>
     </aside>
 
@@ -1271,6 +1275,22 @@
         `;
       }
     });
+
+    // Purge Vector Store Documents
+    const btnClearDocs = document.getElementById('btnClearDocs');
+    if (btnClearDocs) {
+      btnClearDocs.addEventListener('click', async () => {
+        if (!confirm('Are you sure you want to purge all documents from pgvector? All indexed embeddings will be permanently deleted.')) return;
+        try {
+          const res = await fetch('/api/rag/documents', { method: 'DELETE' });
+          const data = await res.json();
+          showToast(data.message || 'All documents purged.', 'success');
+          appendMessage('assistant', '🗑️ All document embeddings have been purged from the pgvector database. You can now upload fresh documents.');
+        } catch (err) {
+          showToast('Failed to purge documents: ' + err.message, 'error');
+        }
+      });
+    }
 
     // Reset Session / New Chat
     btnResetSession.addEventListener('click', async () => {

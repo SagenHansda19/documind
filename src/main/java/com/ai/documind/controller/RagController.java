@@ -91,4 +91,22 @@ public class RagController {
         ragService.clearChatMemory(sessionId);
         return ResponseEntity.ok(Map.of("message", "Conversation memory cleared for session: " + sessionId));
     }
+
+    /**
+     * 6. Purge all document embeddings from the vector store.
+     */
+    @DeleteMapping("/documents")
+    public ResponseEntity<Map<String, String>> clearAllDocuments() {
+        ragService.clearAllDocuments();
+        return ResponseEntity.ok(Map.of("message", "All document embeddings cleared from vector store."));
+    }
+
+    /**
+     * 7. Delete embeddings for a specific document file.
+     */
+    @DeleteMapping("/documents/{fileName}")
+    public ResponseEntity<Map<String, String>> deleteDocument(@PathVariable String fileName) {
+        boolean deleted = ragService.deleteDocument(fileName);
+        return ResponseEntity.ok(Map.of("message", "Document '" + fileName + (deleted ? "' deleted successfully." : "' not found in vector store.")));
+    }
 }
