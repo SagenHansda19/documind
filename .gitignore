@@ -46,4 +46,11 @@ Thumbs.db
 ### Local Scratch & Browser Artifacts ###
 /documind-architecture.html
 /documind-archify-showcase.html
-*documind-architecture.html
+# Ignore all raw HTML and docs assets
+*.html
+docs/*.html
+docs/*.json
+docs/*.png
+
+# Except the exact architecture diagram used in the README
+!docs/documind-architecture.visual-check.1440x900.dark.png
