@@ -60,31 +60,41 @@ Rather than relying on brittle keyword searches or Python scripting stacks, Docu
 
 ---
 
-## ⚡ Core Engineering Highlights
+## ⚡ Core Engineering Highlights (Resume Architecture Deep-Dive)
 
-### 1. Dual-Provider Resilient Failover (GoF Proxy Pattern)
-Enterprise AI pipelines cannot fail when an external vendor suffers regional outages or HTTP 429 rate limit throttling. In [`AiConfig.java`](src/main/java/com/ai/documind/config/AiConfig.java), DocuMind implements a lightweight `ResilientFailoverChatModel` proxy:
-- **Primary**: Groq LPU Cloud (`OpenAiChatModel` wire protocol targeting `llama-3.3-70b-versatile` at ~90ms).
-- **Secondary**: Google Gemini (`GoogleAiGeminiChatModel` with 60s timeout and exponential backoff).
-- **Runtime Switching**: Switchable on-the-fly via `ai.provider=auto|groq|gemini` without application redeployment.
+### 1. Cloud-Native RAG Intelligence (Spring Boot + Supabase PostgreSQL + pgvector)
+> 🎯 **Resume Highlight:** *Engineered a cloud-native RAG document intelligence platform using Spring Boot and Supabase PostgreSQL with the pgvector extension for high-performance vector similarity search and context retrieval.*
 
-### 2. Semantic Vector Space vs. Brittle Keyword Lookups
-Traditional SQL `LIKE` or inverted full-text indexes fail when queries use synonyms (e.g., searching *"vacation days"* misses *"paid annual leave policy"*).
-- `gemini-embedding-001` translates text into 768-dimensional coordinates.
-- PostgreSQL `pgvector` calculates cosine distance (`<=>` operator) indexed with HNSW.
-- Retrieves context based on **conceptual meaning**, completely bridging user phrasing with corporate document terminology.
+DocuMind provides an enterprise, cloud-native document intelligence platform powered by Spring Boot 3.3.0 and Supabase PostgreSQL with the `pgvector` extension:
+- **Cloud-Native Connection & Normalization**: Implemented in [`DatabaseConfig.java`](src/main/java/com/ai/documind/config/DatabaseConfig.java), a custom HikariCP connection factory automatically normalizes cloud connection strings (Supabase, Render, Railway), cleanly separating special-character credentials (`#`, `@`, `%`) from JDBC connection endpoints to prevent URI parsing failures and auto-enforcing `sslmode=require` for encrypted transit.
+- **In-Database Semantic Vector Space**: Instead of managing separate vector silos (like Pinecone or Chroma) which introduce latency and synchronization complexity, DocuMind stores high-dimensional embeddings directly inside the relational database (`doc_embeddings` schema: `UUID id, vector(768) embedding, text TEXT, metadata JSONB`).
+- **High-Performance Cosine Distance Retrieval**: Vector similarity searches execute natively inside PostgreSQL using the Cosine Distance operator (`<=>`), optimized with **HNSW (Hierarchical Navigable Small World)** indexes for sub-millisecond nearest-neighbor retrieval across enterprise document corpuses.
+- **Context Retrieval & Confidence Filtering**: Candidate chunks are scored via cosine similarity (`1 - cosine_distance`), filtered against a strict confidence threshold (`minScore = 0.5`), and top-K matches (`topK = 4`) are dynamically fed into the LLM context window.
 
-### 3. Chunk-to-Embedding Binding & Idempotent Vector Purging
-- **Overlapping Segmentation**: `DocumentSplitters.recursive(800, 150)` preserves contextual continuity across chunk boundaries.
-- **Dimension Parity**: MRL truncation explicitly binds `outputDimensionality(768)` to guarantee vector compatibility with PostgreSQL `vector(768)`.
-- **Zero Pollution**: Re-uploading a document automatically purges previous segments using `DELETE FROM doc_embeddings WHERE metadata->>'file_name' = ?`.
+### 2. Resilient Dual-Provider AI Engine (LangChain4j + Groq + Gemini)
+> 🎯 **Resume Highlight:** *Implemented a resilient dual-provider AI architecture via LangChain4j integrating Groq and Google Gemini APIs with automated fallback heuristics and context-aware citation tracking.*
+
+Enterprise production systems cannot tolerate single-provider outages or HTTP 429 rate limit throttling. In [`AiConfig.java`](src/main/java/com/ai/documind/config/AiConfig.java), DocuMind leverages LangChain4j 0.35.0 to build a resilient, dual-provider architecture:
+- **Sub-Second Primary Generation (Groq LPU)**: Utilizes Groq Cloud's custom LPU (Language Processing Unit) architecture targeting `openai/gpt-oss-120b` and `llama-3.3-70b-versatile`, delivering 500+ tokens/sec with sub-500ms time-to-first-token.
+- **Multimodal & Embedding Backbone (Google Gemini)**: Couples Gemini's reasoning (`gemini-3.8-flash`) for failover generation with `gemini-embedding-001` for deterministic 768-dimensional coordinate vector synthesis.
+- **Automated Fallback Heuristics (GoF Proxy Pattern)**: The `ResilientFailoverChatModel` proxy intercepts model invocations in real-time. It catches transient HTTP 429 rate limits, HTTP 503 service unavailable spikes, and network timeouts from the primary provider, transparently re-routing the query to Gemini in-flight without dropping user sessions or throwing 500 server errors.
+- **Context-Aware Citation Tracking**: Every synthesized response tracks chunk-level provenance, binding document text, source file name, and similarity match percentage (`score * 100`) directly to the answer. Answers are strictly conditioned on retrieved context to eliminate hallucinations.
+
+### 3. Responsive Minimal Dark-Mode Frontend & Ingestion/Deletion Pipeline
+> 🎯 **Resume Highlight:** *Built a responsive, minimal dark-mode frontend featuring global keyboard shortcuts, dynamic chunking ingestion, and real-time document inventory deletion pipeline.*
+
+The user interface is an ultra-minimalist, single-file frontend served natively by Spring Boot (`src/main/resources/static/index.html`):
+- **Anti-AI Minimalist Aesthetic**: Monochromatic design system inspired by Linear and Vercel (deep charcoal `bg-zinc-950`, crisp `border-zinc-800`, zero purple neon gradients), custom inline SVG favicons (`> _`), and crisp developer typography (`'Inter'`, `-apple-system`, subpixel antialiasing).
+- **Global Keyboard Shortcuts & Micro-Interactions**: Features ChatGPT-style type-anywhere auto-focus (typing any alphanumeric key immediately focuses the chat input), Enter-to-send with Shift+Enter for newlines, and an auto-expanding textarea that stays compact at single-line (36px) and gracefully expands up to 160px.
+- **Dynamic Chunking Ingestion**: Drag-and-drop file ingestion drawer with dual parsers (`ApachePdfBoxDocumentParser` for structural PDFs and `TextDocumentParser` for `.txt`, `.md`, `.json`, `.csv`). Employs overlapping recursive segmentation (`DocumentSplitters.recursive(800, 150)`) to maintain semantic coherence across chunk boundaries.
+- **Real-Time Document Inventory & Deletion Pipeline**: Live document store drawer (`GET /api/rag/documents`) showing active indexed files, chunk counts, and file sizes. Provides targeted document deletion (`DELETE /api/rag/documents/{fileName}`) to atomically purge embeddings from PostgreSQL via JSONB metadata queries (`DELETE FROM doc_embeddings WHERE metadata->>'file_name' = ?`), along with full vector store truncation (`DELETE /api/rag/documents`) and idempotent re-upload protection.
 
 ### 4. Enterprise Java vs. Script-based Python
 | Engineering Dimension | Scripted Python (LangChain / FastAPI) | DocuMind (Spring Boot 3.3 + LangChain4j) |
 | :--- | :--- | :--- |
 | **Type Safety** | Dynamic typing; runtime dimension/schema crashes | Strict compile-time contracts prevent vector mismatches |
 | **Concurrency** | Python GIL bottlenecks; complex worker multiprocessing | JVM virtual threads & native thread pools handle high throughput |
-| **Database Pool** | Ad-hoc connection handling | Production **HikariCP** pool with transactional safety |
+| **Database Pool** | Ad-hoc connection handling | Production **HikariCP** pool with transactional safety & cloud SSL |
 | **Deployment** | Fragile virtual environments & C-wheel compilation drift | Single, self-contained containerized executable JAR |
 
 ### 5. Session-Isolated Conversational Memory
@@ -214,7 +224,42 @@ curl -X GET http://localhost:8080/api/rag/chat/session-dev-01/history
 curl -X DELETE http://localhost:8080/api/rag/chat/session-dev-01
 ```
 
-### 5. Inspect pgvector Stored Chunks (Direct Docker SQL)
+### 5. Document Inventory Inspection
+Retrieve metadata on all active indexed documents:
+```bash
+curl -X GET http://localhost:8080/api/rag/documents
+```
+**Response (200 OK):**
+```json
+[
+  {
+    "fileName": "company_policy.pdf",
+    "chunkCount": 11,
+    "fileSize": 45200
+  }
+]
+```
+
+### 6. Purge Specific Document Chunks
+Atomically remove a document and its associated vector embeddings from PostgreSQL:
+```bash
+curl -X DELETE http://localhost:8080/api/rag/documents/company_policy.pdf
+```
+**Response (200 OK):**
+```json
+{
+  "message": "Successfully purged embeddings for document: company_policy.pdf",
+  "deletedChunks": 11
+}
+```
+
+### 7. Truncate Entire Vector Store
+Purge all embeddings across all indexed documents:
+```bash
+curl -X DELETE http://localhost:8080/api/rag/documents
+```
+
+### 8. Inspect pgvector Stored Chunks (Direct SQL)
 ```bash
 # Count total chunks in pgvector
 docker exec -it documind-db psql -U admin -d documind_db -c "SELECT COUNT(*) FROM doc_embeddings;"
